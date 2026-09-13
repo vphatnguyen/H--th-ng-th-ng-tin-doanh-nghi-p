@@ -11,6 +11,29 @@ const JWT_SECRET = 'cosmetics_crm_secret_2026';
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Đảm bảo CSDL được khởi tạo trước khi xử lý mọi request (cho cả local & Vercel serverless)
+let dbInitPromise = null;
+function ensureDb() {
+  if (!dbInitPromise) {
+    dbInitPromise = db.init();
+  }
+  return dbInitPromise;
+}
+
+app.use(async (req, res, next) => {
+  try {
+    await ensureDb();
+    next();
+  } catch (err) {
+    console.error('Lỗi khởi tạo CSDL:', err);
+    res.status(500).json({ error: 'Khởi tạo CSDL thất bại: ' + err.message });
+  }
+});
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 // ========== MIDDLEWARE: Xác thực JWT ==========
 function authMiddleware(req, res, next) {
   const token = req.headers['authorization']?.split(' ')[1];
@@ -407,23 +430,27 @@ app.get('/api/products', authMiddleware, (req, res) => {
 });
 
 // ========== SERVER START ==========
-db.init().then(() => {
-  app.listen(PORT, () => {
-    console.log('');
-    console.log('╔══════════════════════════════════════════════════════════╗');
-    console.log('║   🌸  HỆ THỐNG CRM - QUẢN LÝ CỬA HÀNG MỸ PHẨM  🌸    ║');
-    console.log('╠══════════════════════════════════════════════════════════╣');
-    console.log(`║   🚀  Server đang chạy: http://localhost:${PORT}          ║`);
-    console.log('╠══════════════════════════════════════════════════════════╣');
-    console.log('║   TÀI KHOẢN DEMO:                                       ║');
-    console.log('║   👑  Admin:    admin / admin123                         ║');
-    console.log('║   📊  Manager:  manager1 / manager123                   ║');
-    console.log('║   🛍️  Customer:  khach001 / customer123                 ║');
-    console.log('╚══════════════════════════════════════════════════════════╝');
-    console.log('');
+if (!process.env.VERCEL) {
+  ensureDb().then(() => {
+    app.listen(PORT, () => {
+      console.log('');
+      console.log('╔══════════════════════════════════════════════════════════╗');
+      console.log('║   🌸  HỆ THỐNG CRM - QUẢN LÝ CỬA HÀNG MỸ PHẨM  🌸    ║');
+      console.log('╠══════════════════════════════════════════════════════════╣');
+      console.log(`║   🚀  Server đang chạy: http://localhost:${PORT}          ║`);
+      console.log('╠══════════════════════════════════════════════════════════╣');
+      console.log('║   TÀI KHOẢN DEMO:                                       ║');
+      console.log('║   👑  Admin:    admin / admin123                         ║');
+      console.log('║   📊  Manager:  manager1 / manager123                   ║');
+      console.log('║   🛍️  Customer:  khach001 / customer123                 ║');
+      console.log('╚══════════════════════════════════════════════════════════╝');
+      console.log('');
+    });
+  }).catch(err => {
+    console.error('Khởi động server thất bại:', err);
+    process.exit(1);
   });
-}).catch(err => {
-  console.error('Khởi động server thất bại:', err);
-  process.exit(1);
-});
+}
+
+module.exports = app;
 
