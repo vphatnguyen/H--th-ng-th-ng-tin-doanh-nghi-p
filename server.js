@@ -284,7 +284,7 @@ app.get('/api/manager/surveys/:id/results', authMiddleware, requireRole('MANAGER
     if (q.question_type === 'RATING') {
       const vals = answers.map(a => Number(a.answer_value)).filter(v => !isNaN(v));
       analysis.average = vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) : null;
-      analysis.distribution = [1,2,3,4,5].map(n => ({ value: n, count: vals.filter(v => v === n).length }));
+      analysis.distribution = [1, 2, 3, 4, 5].map(n => ({ value: n, count: vals.filter(v => v === n).length }));
     } else if (q.question_type === 'SINGLE_CHOICE' || q.question_type === 'MULTI_CHOICE') {
       const counts = {};
       answers.forEach(a => {
@@ -361,7 +361,7 @@ app.get('/api/customer/surveys/:id', authMiddleware, requireRole('CUSTOMER'), (r
   const survey = db.prepare('SELECT s.*, p.name as product_name FROM Surveys s LEFT JOIN Products p ON s.target_product_id = p.id WHERE s.id = ?').get(req.params.id);
   if (!survey) return res.status(404).json({ error: 'Không tìm thấy khảo sát' });
   const questions = db.prepare('SELECT * FROM Questions WHERE survey_id = ? ORDER BY order_index').all(req.params.id);
-  questions.forEach(q => { if (q.options) try { q.options = JSON.parse(q.options); } catch {} });
+  questions.forEach(q => { if (q.options) try { q.options = JSON.parse(q.options); } catch { } });
   res.json({ survey, questions });
 });
 

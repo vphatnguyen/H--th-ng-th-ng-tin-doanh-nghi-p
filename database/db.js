@@ -317,17 +317,17 @@ function seedDatabase() {
     INSERT INTO Questions (survey_id, question_text, question_type, options, order_index) VALUES (?, ?, ?, ?, ?)
   `);
 
-  insertQuestion.run(s1.lastInsertRowid, 'Bạn thường sử dụng loại son nào?', 'SINGLE_CHOICE', JSON.stringify(['Son lì (Matte)','Son bóng (Glossy)','Son kem','Son dưỡng','Không dùng son']), 1);
-  insertQuestion.run(s1.lastInsertRowid, 'Tông màu son bạn yêu thích?', 'MULTI_CHOICE', JSON.stringify(['Đỏ','Hồng','Cam','Nude/Be','Tím','Nâu']), 2);
-  insertQuestion.run(s1.lastInsertRowid, 'Mức giá bạn sẵn sàng chi cho một cây son chất lượng?', 'SINGLE_CHOICE', JSON.stringify(['Dưới 200.000đ','200.000 - 400.000đ','400.000 - 600.000đ','Trên 600.000đ']), 3);
+  insertQuestion.run(s1.lastInsertRowid, 'Bạn thường sử dụng loại son nào?', 'SINGLE_CHOICE', JSON.stringify(['Son lì (Matte)', 'Son bóng (Glossy)', 'Son kem', 'Son dưỡng', 'Không dùng son']), 1);
+  insertQuestion.run(s1.lastInsertRowid, 'Tông màu son bạn yêu thích?', 'MULTI_CHOICE', JSON.stringify(['Đỏ', 'Hồng', 'Cam', 'Nude/Be', 'Tím', 'Nâu']), 2);
+  insertQuestion.run(s1.lastInsertRowid, 'Mức giá bạn sẵn sàng chi cho một cây son chất lượng?', 'SINGLE_CHOICE', JSON.stringify(['Dưới 200.000đ', '200.000 - 400.000đ', '400.000 - 600.000đ', 'Trên 600.000đ']), 3);
   insertQuestion.run(s1.lastInsertRowid, 'Bạn đánh giá bao nhiêu điểm cho dòng son hiện tại của chúng tôi?', 'RATING', null, 4);
   insertQuestion.run(s1.lastInsertRowid, 'Bạn mong muốn điều gì ở dòng son mới sắp ra mắt?', 'TEXT', null, 5);
 
   // Seed Questions for Survey 2
-  insertQuestion.run(s2.lastInsertRowid, 'Độ tuổi của bạn thuộc nhóm nào?', 'SINGLE_CHOICE', JSON.stringify(['Dưới 25 tuổi','25-34 tuổi','35-44 tuổi','45-54 tuổi','Trên 55 tuổi']), 1);
-  insertQuestion.run(s2.lastInsertRowid, 'Bạn có đang sử dụng serum chống lão hóa không?', 'SINGLE_CHOICE', JSON.stringify(['Có, dùng hàng ngày','Đôi khi','Chưa từng dùng','Đang tìm kiếm sản phẩm phù hợp']), 2);
-  insertQuestion.run(s2.lastInsertRowid, 'Thành phần bạn quan tâm nhất trong serum chống lão hóa?', 'MULTI_CHOICE', JSON.stringify(['Retinol','Peptide','Vitamin C','Collagen','Hyaluronic Acid','Niacinamide']), 3);
-  insertQuestion.run(s2.lastInsertRowid, 'Bạn sẵn sàng chi bao nhiêu cho serum chống lão hóa chất lượng cao?', 'SINGLE_CHOICE', JSON.stringify(['Dưới 500.000đ','500.000 - 1.000.000đ','1.000.000 - 2.000.000đ','Trên 2.000.000đ']), 4);
+  insertQuestion.run(s2.lastInsertRowid, 'Độ tuổi của bạn thuộc nhóm nào?', 'SINGLE_CHOICE', JSON.stringify(['Dưới 25 tuổi', '25-34 tuổi', '35-44 tuổi', '45-54 tuổi', 'Trên 55 tuổi']), 1);
+  insertQuestion.run(s2.lastInsertRowid, 'Bạn có đang sử dụng serum chống lão hóa không?', 'SINGLE_CHOICE', JSON.stringify(['Có, dùng hàng ngày', 'Đôi khi', 'Chưa từng dùng', 'Đang tìm kiếm sản phẩm phù hợp']), 2);
+  insertQuestion.run(s2.lastInsertRowid, 'Thành phần bạn quan tâm nhất trong serum chống lão hóa?', 'MULTI_CHOICE', JSON.stringify(['Retinol', 'Peptide', 'Vitamin C', 'Collagen', 'Hyaluronic Acid', 'Niacinamide']), 3);
+  insertQuestion.run(s2.lastInsertRowid, 'Bạn sẵn sàng chi bao nhiêu cho serum chống lão hóa chất lượng cao?', 'SINGLE_CHOICE', JSON.stringify(['Dưới 500.000đ', '500.000 - 1.000.000đ', '1.000.000 - 2.000.000đ', 'Trên 2.000.000đ']), 4);
   insertQuestion.run(s2.lastInsertRowid, 'Chia sẻ thêm mong muốn của bạn về sản phẩm serum chống lão hóa lý tưởng:', 'TEXT', null, 5);
 
   // Seed Survey Results (some customers already answered)
