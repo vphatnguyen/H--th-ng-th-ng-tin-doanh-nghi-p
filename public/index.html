@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BeautyCRM – Hệ thống CRM Mỹ Phẩm</title>
+  <meta name="description" content="Hệ thống CRM quản lý chuỗi cửa hàng mỹ phẩm - Quản lý khách hàng, khảo sát sản phẩm mới và phân tích thị hiếu làm đẹp.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <!-- ===== LOGIN SCREEN ===== -->
+  <div id="login-screen" class="login-screen">
+    <div class="login-bg-shapes">
+      <div class="shape shape-1"></div>
+      <div class="shape shape-2"></div>
+      <div class="shape shape-3"></div>
+    </div>
+    <div class="login-card">
+      <div class="login-logo">
+        <span class="logo-icon">🌸</span>
+        <div>
+          <h1 class="logo-title">BeautyCRM</h1>
+          <p class="logo-sub">Hệ thống quản lý chuỗi cửa hàng mỹ phẩm</p>
+        </div>
+      </div>
+
+      <!-- Quick Role Switcher -->
+      <div class="quick-login" id="quick-login-section">
+        <p class="quick-label">⚡ Đăng nhập nhanh để demo:</p>
+        <div class="quick-btns">
+          <button class="quick-btn admin" onclick="quickLogin('admin','admin123')">👑 Admin</button>
+          <button class="quick-btn manager" onclick="quickLogin('manager1','manager123')">📊 Manager</button>
+          <button class="quick-btn customer" onclick="quickLogin('khach001','customer123')">🛍️ Khách hàng</button>
+        </div>
+      </div>
+
+      <div class="login-divider"><span>hoặc đăng nhập thủ công</span></div>
+
+      <form id="login-form" class="login-form">
+        <div class="form-group">
+          <label for="login-username">Tên đăng nhập</label>
+          <input type="text" id="login-username" placeholder="Nhập tên đăng nhập" required>
+        </div>
+        <div class="form-group">
+          <label for="login-password">Mật khẩu</label>
+          <input type="password" id="login-password" placeholder="Nhập mật khẩu" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full" id="login-btn">Đăng nhập</button>
+        <p id="login-error" class="error-msg"></p>
+      </form>
+      <p class="login-register-link">Chưa có tài khoản? <a href="#" onclick="showRegister()">Đăng ký ngay</a></p>
+    </div>
+  </div>
+
+  <!-- ===== REGISTER SCREEN ===== -->
+  <div id="register-screen" class="login-screen hidden">
+    <div class="login-bg-shapes">
+      <div class="shape shape-1"></div>
+      <div class="shape shape-2"></div>
+    </div>
+    <div class="login-card register-card">
+      <div class="login-logo">
+        <span class="logo-icon">🌸</span>
+        <div>
+          <h1 class="logo-title">Đăng ký tài khoản</h1>
+          <p class="logo-sub">Tham gia BeautyCRM ngay hôm nay</p>
+        </div>
+      </div>
+      <form id="register-form" class="login-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="reg-username">Tên đăng nhập *</label>
+            <input type="text" id="reg-username" required>
+          </div>
+          <div class="form-group">
+            <label for="reg-password">Mật khẩu *</label>
+            <input type="password" id="reg-password" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="reg-fullname">Họ và tên *</label>
+          <input type="text" id="reg-fullname" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="reg-email">Email</label>
+            <input type="email" id="reg-email">
+          </div>
+          <div class="form-group">
+            <label for="reg-phone">Số điện thoại</label>
+            <input type="tel" id="reg-phone">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="reg-age">Độ tuổi</label>
+            <input type="number" id="reg-age" min="13" max="100">
+          </div>
+          <div class="form-group">
+            <label for="reg-gender">Giới tính</label>
+            <select id="reg-gender">
+              <option value="">-- Chọn --</option>
+              <option value="Nu">Nữ</option>
+              <option value="Nam">Nam</option>
+              <option value="Khac">Khác</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="reg-skin">Loại da</label>
+          <select id="reg-skin">
+            <option value="">-- Chọn loại da --</option>
+            <option value="Da dầu">Da dầu</option>
+            <option value="Da khô">Da khô</option>
+            <option value="Da hỗn hợp">Da hỗn hợp</option>
+            <option value="Da nhạy cảm">Da nhạy cảm</option>
+            <option value="Da thường">Da thường</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">Tạo tài khoản</button>
+        <p id="reg-error" class="error-msg"></p>
+        <p id="reg-success" class="success-msg"></p>
+      </form>
+      <p class="login-register-link">Đã có tài khoản? <a href="#" onclick="showLogin()">Đăng nhập</a></p>
+    </div>
+  </div>
+
+  <!-- ===== MAIN APP ===== -->
+  <div id="app" class="hidden">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <span class="sidebar-logo">🌸</span>
+        <div>
+          <h2 class="sidebar-title">BeautyCRM</h2>
+          <span class="sidebar-role-badge" id="sidebar-role-badge">Admin</span>
+        </div>
+        <button class="sidebar-close" onclick="toggleSidebar()" id="sidebar-close-btn">✕</button>
+      </div>
+
+      <div class="sidebar-user">
+        <div class="user-avatar" id="user-avatar-sidebar">A</div>
+        <div>
+          <p class="user-name" id="sidebar-user-name">Nguyễn Văn Admin</p>
+          <p class="user-username" id="sidebar-username">@admin</p>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav" id="sidebar-nav">
+        <!-- Nav items injected by JS based on role -->
+      </nav>
+
+      <div class="sidebar-footer">
+        <!-- Quick Role Switcher in App -->
+        <div class="role-switcher">
+          <p class="role-switcher-label">Chuyển đổi demo:</p>
+          <div class="role-switcher-btns">
+            <button class="rsw-btn admin" onclick="quickLogin('admin','admin123')" title="Đăng nhập Admin">👑</button>
+            <button class="rsw-btn manager" onclick="quickLogin('manager1','manager123')" title="Đăng nhập Manager">📊</button>
+            <button class="rsw-btn customer" onclick="quickLogin('khach001','customer123')" title="Đăng nhập Customer">🛍️</button>
+          </div>
+        </div>
+        <button class="btn-logout" onclick="logout()">🚪 Đăng xuất</button>
+      </div>
+    </aside>
+
+    <!-- Mobile Menu Toggle -->
+    <button class="mobile-menu-btn" onclick="toggleSidebar()" id="mobile-menu-btn">☰</button>
+
+    <!-- Main Content -->
+    <main class="main-content" id="main-content">
+      <div class="content-header">
+        <div>
+          <h2 id="page-title">Dashboard</h2>
+          <p id="page-subtitle" class="page-subtitle">Tổng quan hệ thống</p>
+        </div>
+        <div class="header-actions" id="header-actions"></div>
+      </div>
+      <div id="page-content" class="page-content"></div>
+    </main>
+  </div>
+
+  <!-- ===== MODAL ===== -->
+  <div id="modal-overlay" class="modal-overlay hidden" onclick="closeModal(event)">
+    <div class="modal" id="modal">
+      <div class="modal-header">
+        <h3 id="modal-title">Modal Title</h3>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="/js/app.js"></script>
+  <script src="/js/admin.js"></script>
+  <script src="/js/manager.js"></script>
+  <script src="/js/customer.js"></script>
+</body>
+</html>

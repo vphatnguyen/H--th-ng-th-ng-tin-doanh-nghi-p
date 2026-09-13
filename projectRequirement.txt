@@ -1,0 +1,64 @@
+Cài đặt CSDL  
++ CSDL được thiết kế với đầy đủ các bảng 
++ Phải có phương án để sao lưu và phục hồi CSDL trong báo cáo(5đ) 
+Giao diện ADMIN:  
+Giao diện của Admin server phải tách biệt với giao diện của quản lý nhân sự, quản lý kho, quản lý bán hàng 
+Admin có thể xem, tìm kiếm, tìm kiếm nâng cao, và sắp xếp, lọc các sản phẩm, nhà cung cấp...
+Admin thêm xóa, phân quyền cho account 
+
+
+
+Mô phỏng hệ thống CRM
+Mục tiêu hệ thống nhằm đánh giá được quá trình quản lý khách hàng của doanh nghiệp. Độ hài lòng của khách hàng, thăm dò khách hàng khi chuẩn bị ra mắt sản phẩn mới. 
+Người quản lý:
+Thêm một khách hàng mới
+Xóa khách hàng
+Khóa tài khoản khách hàng
+Tiếp nhận phản hồi của khách hàng
+Báo cáo về khách hàng, tỷ lệ độ tuổi, sở thích
+Tạo bảng khảo sát và gửi đến tài khoản khách hàng
+Thống kê kết quả khảo sát 
+Khách hàng:
+Đăng ký tài khoản khách hàng
+Đăng nhập
+Chỉnh sửa thông tin
+Gửi phản hồi về sản phẩm
+Nhận được khảo sát và thực hiện
+
+
+1. Tên đề tài & Mục tiêu
+
+Đề tài: Hệ thống CRM (Customer Relationship Management) cho chuỗi cửa hàng Mỹ phẩm.
+
+Mục tiêu: Quản lý thông tin, phân tích tỷ lệ độ tuổi, sở thích làm đẹp của tập khách hàng. Đánh giá độ hài lòng và thu thập phản hồi thông qua các chiến dịch khảo sát thị hiếu khi chuẩn bị ra mắt các dòng sản phẩm mới (ví dụ: son môi, kem dưỡng da...).
+
+
+3. Thiết kế Cơ sở dữ liệu (CSDL)
+Hệ thống tiến hành chuẩn hóa các thuộc tính cơ sở dữ liệu cho biểu đồ thực thể - mối kết hợp (ERD), bao gồm các bảng cốt lõi sau:
+
+Account: Quản lý thông tin đăng nhập và phân quyền.
+
+Customer: Chứa thông tin chi tiết (độ tuổi, loại da, sở thích mỹ phẩm).
+
+Product & Supplier: Quản lý danh mục mỹ phẩm, thương hiệu và nhà cung cấp.
+
+Survey & Question: Lưu trữ nội dung các chiến dịch khảo sát sản phẩm mới.
+
+Feedback & Survey_Result: Lưu lại các phản hồi và đáp án khảo sát của khách hàng.
+
+4. Phân rã chức năng theo vai trò
+
+Quyền Admin: Giao diện của Admin server được thiết kế tách biệt hoàn toàn với phân hệ quản lý kho, bán hàng và nhân sự. Admin tận dụng các bộ lọc nâng cao trên giao diện để tìm kiếm, sắp xếp các sản phẩm, nhà cung cấp. Thực hiện các chức năng CRUD (Thêm, xóa) và phân quyền cho tài khoản.
+
+Quyền Manager (Quản lý): Thêm, xóa, hoặc khóa tài khoản khách hàng. Xem các báo cáo thống kê về tỷ lệ độ tuổi, sở thích. Khởi tạo bảng khảo sát mỹ phẩm, gửi đến khách hàng, sau đó thống kê kết quả và tiếp nhận các phản hồi.
+
+Quyền Customer (Khách hàng): Đăng ký, đăng nhập và chỉnh sửa thông tin cá nhân. Gửi phản hồi về trải nghiệm sử dụng sản phẩm. Nhận thông báo và thực hiện điền các bài khảo sát.
+
+5. Phương án Sao lưu & Phục hồi 
+
+Sao lưu (Backup): Sử dụng các script SQL Server để thiết lập kịch bản sao lưu định kỳ (Full Backup và Differential Backup).
+
+Phục hồi (Restore): Cấu hình backend sẽ được xác minh thông qua các test case cơ sở dữ liệu. Cụ thể, bạn đưa vào báo cáo một kịch bản test: Giả lập sự cố mất dữ liệu trên bảng Feedback, sau đó tiến hành chạy lệnh restore từ file backup để chứng minh hệ thống phục hồi thành công.
+
+
+

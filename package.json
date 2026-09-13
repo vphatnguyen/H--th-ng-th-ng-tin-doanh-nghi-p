@@ -1,0 +1,23 @@
+{
+  "name": "cosmetics-crm",
+  "version": "1.0.0",
+  "description": "Hệ thống CRM Quản lý Chuỗi Cửa Hàng Mỹ Phẩm",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "sql.js": "^1.14.2"
+  },
+  "keywords": [
+    "crm",
+    "cosmetics",
+    "management"
+  ],
+  "author": "",
+  "license": "ISC"
+}
