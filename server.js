@@ -54,30 +54,16 @@ function requireRole(...roles) {
   };
 }
 
-// Hàm kiểm tra mật khẩu hỗ trợ cả văn bản thuần (plain text) lẫn bcrypt, tự động nhận diện cả cột 'password' và 'password_hash'
-function getStoredPassword(account) {
-  if (!account) return null;
-  return account.password !== undefined ? account.password : account.password_hash;
-}
-
+// Hàm kiểm tra mật khẩu dạng văn bản thuần (plain text)
 function verifyPassword(inputPassword, account) {
-  const storedPassword = getStoredPassword(account);
-  if (!inputPassword || !storedPassword) return false;
-  if (inputPassword === storedPassword) return true; // Chấp nhận mật khẩu chữ thường
-  try {
-    return bcrypt.compareSync(inputPassword, storedPassword); // Vẫn hỗ trợ bcrypt nếu có
-  } catch {
-    return false;
-  }
+  if (!inputPassword || !account) return false;
+  const storedPassword = account.password;
+  if (!storedPassword) return false;
+  return String(inputPassword) === String(storedPassword);
 }
 
 async function insertAccount(username, passwordVal, full_name, email, phone, role) {
-  try {
-    return await db.prepare('INSERT INTO Accounts (username, password, full_name, email, phone, role) VALUES (?, ?, ?, ?, ?, ?)').run(username, passwordVal, full_name, email || null, phone || null, role);
-  } catch (err) {
-    // Nếu SQL Server chưa đổi tên cột thành 'password', sử dụng cột cũ 'password_hash'
-    return await db.prepare('INSERT INTO Accounts (username, password_hash, full_name, email, phone, role) VALUES (?, ?, ?, ?, ?, ?)').run(username, passwordVal, full_name, email || null, phone || null, role);
-  }
+  return await db.prepare('INSERT INTO Accounts (username, password, full_name, email, phone, role) VALUES (?, ?, ?, ?, ?, ?)').run(username, passwordVal, full_name, email || null, phone || null, role);
 }
 
 // ========== AUTH ==========
