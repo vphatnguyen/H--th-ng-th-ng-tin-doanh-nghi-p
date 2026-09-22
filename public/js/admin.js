@@ -13,7 +13,14 @@ async function renderAdminAccounts() {
   } catch (e) { toast(e.message, 'error'); }
 }
 
+let currentAccountsList = [];
+function openEditAccountModalById(id) {
+  const a = currentAccountsList.find(x => Number(x.id) === Number(id));
+  if (a) openEditAccountModal(a);
+}
+
 function renderAccountsTable(accounts, searchParams = {}) {
+  currentAccountsList = accounts;
   const html = `
     <div class="filter-bar">
       <input type="text" id="acc-search" placeholder="🔍 Tìm tên, username, email..." value="${searchParams.search || ''}">
@@ -50,8 +57,8 @@ function renderAccountsTable(accounts, searchParams = {}) {
               <td style="color:var(--text-muted);font-size:12px">${formatDate(a.created_at)}</td>
               <td>
                 <div style="display:flex;gap:6px">
-                  <button class="btn btn-secondary btn-sm" onclick="openEditAccountModal(${JSON.stringify(a).split('"').join('&quot;')})">✏️</button>
-                  <button class="btn btn-danger btn-sm" onclick="deleteAccount(${a.id},'${a.full_name}')">🗑️</button>
+                  <button class="btn btn-secondary btn-sm" onclick="openEditAccountModalById(${a.id})">✏️</button>
+                  <button class="btn btn-danger btn-sm" onclick="deleteAccount(${a.id},'${a.full_name.replace(/'/g, "\\'")}')">🗑️</button>
                 </div>
               </td>
             </tr>
@@ -175,6 +182,12 @@ async function renderAdminProducts() {
   await fetchAndRenderProducts({});
 }
 
+let currentProductsList = [];
+function openEditProductModalById(id) {
+  const p = currentProductsList.find(x => Number(x.id) === Number(id));
+  if (p) openEditProductModal(p);
+}
+
 async function fetchAndRenderProducts(filters) {
   productFilters = filters;
   try {
@@ -182,6 +195,7 @@ async function fetchAndRenderProducts(filters) {
     Object.entries(filters).forEach(([k, v]) => { if (v) params.append(k, v); });
     const products = await api('GET', `/api/admin/products?${params}`);
     const suppliers = await api('GET', '/api/admin/suppliers');
+    currentProductsList = products;
 
     const supplierOptions = suppliers.map(s => `<option value="${s.id}" ${filters.supplier_id == s.id ? 'selected' : ''}>${s.name}</option>`).join('');
 
@@ -248,7 +262,7 @@ async function fetchAndRenderProducts(filters) {
                 <td style="color:var(--text-muted);font-size:12px">${formatDate(p.created_at)}</td>
                 <td>
                   <div style="display:flex;gap:6px">
-                    <button class="btn btn-secondary btn-sm" onclick='openEditProductModal(${JSON.stringify(p)})'>✏️</button>
+                    <button class="btn btn-secondary btn-sm" onclick="openEditProductModalById(${p.id})">✏️</button>
                     <button class="btn btn-danger btn-sm" onclick="deleteProduct(${p.id},'${p.name.replace(/'/g,"\\'")}')">🗑️</button>
                   </div>
                 </td>
@@ -390,7 +404,14 @@ async function renderAdminSuppliers() {
   } catch (e) { toast(e.message, 'error'); }
 }
 
+let currentSuppliersList = [];
+function openEditSupplierModalById(id) {
+  const s = currentSuppliersList.find(x => Number(x.id) === Number(id));
+  if (s) openEditSupplierModal(s);
+}
+
 function renderSuppliersTable(suppliers) {
+  currentSuppliersList = suppliers;
   const html = `
     <div class="filter-bar">
       <input type="text" id="sup-search" placeholder="🔍 Tên, người liên hệ, email...">
@@ -417,7 +438,7 @@ function renderSuppliersTable(suppliers) {
               <td>${statusBadge(s.status)}</td>
               <td>
                 <div style="display:flex;gap:6px">
-                  <button class="btn btn-secondary btn-sm" onclick='openEditSupplierModal(${JSON.stringify(s)})'>✏️</button>
+                  <button class="btn btn-secondary btn-sm" onclick="openEditSupplierModalById(${s.id})">✏️</button>
                   <button class="btn btn-danger btn-sm" onclick="deleteSupplier(${s.id},'${s.name.replace(/'/g,"\\'")}')">🗑️</button>
                 </div>
               </td>

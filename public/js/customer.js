@@ -83,7 +83,7 @@ async function renderCustomerHome() {
                   <div class="survey-meta">${s.product_name ? `📦 ${s.product_name} · ` : ''}📝 ${s.question_count} câu hỏi · ${surveyStatusBadge(s.status)}</div>
                 </div>
                 <div class="survey-actions">
-                  <button class="btn btn-primary btn-sm" onclick="startSurvey(${s.id},'${s.title.replace(/'/g,"\\'")}')">Làm ngay ▶️</button>
+                  <button class="btn btn-primary btn-sm" onclick="startSurvey(${s.id})">Làm ngay ▶️</button>
                 </div>
               </div>
             `).join('')}
@@ -145,7 +145,7 @@ async function renderCustomerSurveys() {
             <div class="survey-actions">
               ${s.already_submitted > 0
                 ? `<span class="badge badge-active">✅ Đã hoàn thành</span>`
-                : `<button class="btn btn-primary btn-sm" onclick="startSurvey(${s.id},'${s.title.replace(/'/g,"\\'")}')">▶️ Làm khảo sát</button>`
+                : `<button class="btn btn-primary btn-sm" onclick="startSurvey(${s.id})">▶️ Làm khảo sát</button>`
               }
             </div>
           </div>
@@ -156,11 +156,13 @@ async function renderCustomerSurveys() {
   } catch (e) { toast(e.message, 'error'); }
 }
 
-async function startSurvey(id, title) {
-  showModal(`📋 ${title}`, `<div class="loading-spinner"><div class="spinner"></div></div>`, true);
+async function startSurvey(id) {
+  showModal('📋 Khảo sát', `<div class="loading-spinner"><div class="spinner"></div></div>`, true);
   try {
     const data = await api('GET', `/api/customer/surveys/${id}`);
     const { survey, questions } = data;
+    const modalTitle = document.getElementById('modal-title');
+    if (modalTitle) modalTitle.textContent = `📋 ${survey.title}`;
 
     let body = `
       <div style="background:rgba(244,63,94,0.08);border:1px solid rgba(244,63,94,0.15);border-radius:10px;padding:14px;margin-bottom:16px">
@@ -176,28 +178,41 @@ async function startSurvey(id, title) {
 
       if (q.question_type === 'SINGLE_CHOICE' && Array.isArray(q.options)) {
         body += `<div style="display:flex;flex-direction:column;gap:8px">`;
-        q.options.forEach((opt, oi) => {
-          body += `<label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 12px;border-radius:8px;border:1px solid var(--border);transition:all 0.15s;font-size:13px" onclick="this.style.borderColor='var(--rose-400)';this.style.background='rgba(244,63,94,0.08)';document.querySelectorAll('[name=q${q.id}]').forEach(r=>r.checked=false)">
-            <input type="radio" name="q${q.id}" value="${opt}" style="accent-color:var(--rose-500)"> ${opt}
+        q.options.forEach((opt) => {
+          const safeOpt = String(opt).replace(/"/g, '&quot;');
+          body += `<label class="survey-option-label">
+            <input type="radio" name="q${q.id}" value="${safeOpt}" style="accent-color:var(--rose-500)">
+            <span>${opt}</span>
           </label>`;
         });
         body += `</div>`;
       } else if (q.question_type === 'MULTI_CHOICE' && Array.isArray(q.options)) {
         body += `<div style="display:flex;flex-direction:column;gap:8px">`;
         q.options.forEach(opt => {
-          body += `<label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:13px">
-            <input type="checkbox" name="q${q.id}" value="${opt}" style="accent-color:var(--rose-500)"> ${opt}
+          const safeOpt = String(opt).replace(/"/g, '&quot;');
+          body += `<label class="survey-option-label">
+            <input type="checkbox" name="q${q.id}" value="${safeOpt}" style="accent-color:var(--rose-500)">
+            <span>${opt}</span>
           </label>`;
         });
         body += `</div>`;
       } else if (q.question_type === 'RATING') {
-        body += `<div style="display:flex;gap:6px">`;
-        for (let s = 1; s <= 5; s++) {
-          body += `<label style="cursor:pointer;font-size:28px;color:var(--slate-600);transition:color 0.15s" title="${s} sao" onclick="selectStar(this,${q.id},${s})">
-            <input type="radio" name="q${q.id}" value="${s}" style="display:none"> ⭐
-          </label>`;
-        }
-        body += `</div>`;
+        body += `
+          <div style="display:flex;align-items:center;gap:12px;padding:6px 0">
+            <div style="display:flex;gap:6px" onmouseleave="resetSurveyStar(${q.id})">
+              ${[1, 2, 3, 4, 5].map(s => `
+                <span id="survey-star-${q.id}-${s}" 
+                      style="cursor:pointer;font-size:32px;color:rgba(255,255,255,0.22);transition:all 0.15s ease;user-select:none;display:inline-block" 
+                      title="${s} sao"
+                      onmouseover="hoverSurveyStar(${q.id}, ${s})"
+                      onclick="selectSurveyStar(${q.id}, ${s})">★</span>
+                <input type="radio" name="q${q.id}" value="${s}" style="display:none">
+              `).join('')}
+            </div>
+            <input type="hidden" id="rating-val-q${q.id}" value="">
+            <span id="survey-star-text-${q.id}" style="font-size:13px;color:var(--rose-300);font-weight:600;min-width:140px"></span>
+          </div>
+        `;
       } else if (q.question_type === 'TEXT') {
         body += `<textarea name="q${q.id}" placeholder="Chia sẻ ý kiến của bạn..." style="width:100%;min-height:80px"></textarea>`;
       }
@@ -218,12 +233,44 @@ async function startSurvey(id, title) {
   }
 }
 
-function selectStar(label, qid, value) {
-  const labels = document.querySelectorAll(`[name=q${qid}]`);
-  labels.forEach((input, i) => {
-    const parentLabel = input.closest('label') || input.parentElement;
-    parentLabel.style.color = i < value ? '#fbbf24' : 'var(--slate-600)';
-  });
+function selectSurveyStar(qid, val) {
+  const radio = document.querySelector(`input[name="q${qid}"][value="${val}"]`);
+  if (radio) radio.checked = true;
+  const ratingInput = document.getElementById(`rating-val-q${qid}`);
+  if (ratingInput) ratingInput.value = val;
+  updateSurveyStarsUI(qid, val);
+}
+
+function hoverSurveyStar(qid, val) {
+  updateSurveyStarsUI(qid, val);
+}
+
+function resetSurveyStar(qid) {
+  const ratingInput = document.getElementById(`rating-val-q${qid}`);
+  const currentVal = ratingInput ? Number(ratingInput.value) || 0 : 0;
+  updateSurveyStarsUI(qid, currentVal);
+}
+
+function updateSurveyStarsUI(qid, val) {
+  const labels = ['', '1 sao - Rất kém', '2 sao - Chưa tốt', '3 sao - Bình thường', '4 sao - Hài lòng', '5 sao - Rất tuyệt vời! ⭐'];
+  for (let s = 1; s <= 5; s++) {
+    const starEl = document.getElementById(`survey-star-${qid}-${s}`);
+    if (starEl) {
+      if (s <= val) {
+        starEl.style.color = '#fbbf24';
+        starEl.style.textShadow = '0 0 12px rgba(251, 191, 36, 0.6)';
+        starEl.style.transform = 'scale(1.15)';
+      } else {
+        starEl.style.color = 'rgba(255, 255, 255, 0.22)';
+        starEl.style.textShadow = 'none';
+        starEl.style.transform = 'scale(1)';
+      }
+    }
+  }
+  const textEl = document.getElementById(`survey-star-text-${qid}`);
+  if (textEl) {
+    textEl.textContent = labels[val] || '';
+  }
 }
 
 async function submitSurvey(surveyId) {
@@ -325,11 +372,18 @@ async function openNewFeedbackModal() {
     </div>
     <div class="form-group">
       <label>Đánh giá của bạn *</label>
-      <div style="display:flex;gap:10px">
-        ${[1,2,3,4,5].map(n => `
-          <label style="font-size:32px;cursor:pointer;transition:transform 0.15s" id="star-lbl-${n}" onclick="setFeedbackStar(${n})" title="${n} sao">⭐</label>
-        `).join('')}
+      <div style="display:flex;align-items:center;gap:14px;padding:6px 0">
+        <div style="display:flex;gap:8px" onmouseleave="resetFeedbackStar()">
+          ${[1,2,3,4,5].map(n => `
+            <span id="fb-star-${n}" 
+                  style="cursor:pointer;font-size:36px;color:rgba(255,255,255,0.22);transition:all 0.15s ease;user-select:none;display:inline-block" 
+                  title="${n} sao"
+                  onmouseover="hoverFeedbackStar(${n})"
+                  onclick="setFeedbackStar(${n})">★</span>
+          `).join('')}
+        </div>
         <input type="hidden" id="fb-rating" value="">
+        <span id="fb-star-desc" style="font-size:13px;color:var(--rose-300);font-weight:600"></span>
       </div>
     </div>
     <div class="form-group">
@@ -352,9 +406,37 @@ function openFeedbackModal(productId, productName) {
 
 function setFeedbackStar(rating) {
   document.getElementById('fb-rating').value = rating;
+  updateFeedbackStarsUI(rating);
+}
+
+function hoverFeedbackStar(val) {
+  updateFeedbackStarsUI(val);
+}
+
+function resetFeedbackStar() {
+  const currentVal = Number(document.getElementById('fb-rating')?.value) || 0;
+  updateFeedbackStarsUI(currentVal);
+}
+
+function updateFeedbackStarsUI(val) {
+  const labels = ['', '1 sao - Rất không hài lòng', '2 sao - Chưa hài lòng', '3 sao - Bình thường', '4 sao - Hài lòng', '5 sao - Rất hài lòng! ⭐'];
   for (let i = 1; i <= 5; i++) {
-    const lbl = document.getElementById(`star-lbl-${i}`);
-    if (lbl) lbl.style.transform = i <= rating ? 'scale(1.2)' : 'scale(1)';
+    const lbl = document.getElementById(`fb-star-${i}`);
+    if (lbl) {
+      if (i <= val) {
+        lbl.style.color = '#fbbf24';
+        lbl.style.textShadow = '0 0 12px rgba(251, 191, 36, 0.6)';
+        lbl.style.transform = 'scale(1.18)';
+      } else {
+        lbl.style.color = 'rgba(255, 255, 255, 0.22)';
+        lbl.style.textShadow = 'none';
+        lbl.style.transform = 'scale(1)';
+      }
+    }
+  }
+  const desc = document.getElementById('fb-star-desc');
+  if (desc) {
+    desc.textContent = labels[val] || '';
   }
 }
 
@@ -367,7 +449,11 @@ async function submitFeedback() {
     await api('POST', '/api/customer/feedbacks', { product_id: Number(product_id), rating: Number(rating), content });
     toast('Cảm ơn bạn đã gửi đánh giá! 🌸', 'success');
     closeModal();
-    renderCustomerFeedback();
+    if (state.currentPage === 'customer-feedback') {
+      renderCustomerFeedback();
+    } else {
+      navigate('customer-feedback');
+    }
   } catch (e) { toast(e.message, 'error'); }
 }
 

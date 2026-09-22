@@ -1,0 +1,122 @@
+================================================================================
+          HỆ THỐNG CRM QUẢN LÝ CHUỖI CỬA HÀNG MỸ PHẨM (COSMETICS CRM)
+                 HƯỚNG DẪN CÀI ĐẶT VÀ SỬ DỤNG PHẦN MỀM
+================================================================================
+
+I. YÊU CẦU HỆ THỐNG & CÔNG NGHỆ SỬ DỤNG
+--------------------------------------------------------------------------------
+1. Công nghệ sử dụng:
+   - Backend: Node.js (Express.js)
+   - Cơ sở dữ liệu: Microsoft SQL Server (kết nối qua mssql / msnodesqlv8)
+   - Database Fallback: SQLite (tự động chuyển đổi nếu chưa cấu hình SQL Server)
+   - Frontend: HTML5, CSS3, JavaScript (Single Page Application - SPA)
+   - Xác thực: JWT (JSON Web Token)
+
+2. Đòi hỏi môi trường cài đặt:
+   - Node.js version >= 16.x (Khuyên dùng v18+)
+   - Microsoft SQL Server 2016 trở lên (SQL Express hoặc Server chính thức)
+   - Trình duyệt Web hiện đại (Google Chrome, Microsoft Edge, Firefox, Brave...)
+
+================================================================================
+II. HƯỚNG DẪN CÀI ĐẶT
+--------------------------------------------------------------------------------
+Bước 1: Khởi tạo Cơ sở dữ liệu trong SQL Server
+------------------------------------------------
+1. Mở Microsoft SQL Server Management Studio (SSMS).
+2. Kết nối vào SQL Server Instance trên máy của bạn (Ví dụ: localhost\SQLEXPRESS).
+3. Mở file script SQL có sẵn tại: database/schema_sqlserver.sql
+4. Thực thi (Execute - F5) toàn bộ script để tạo Database `CosmeticsCRM_DB`, các bảng và dữ liệu mẫu.
+
+Bước 2: Cấu hình biến môi trường (.env)
+---------------------------------------
+1. Mở file `.env` ở thư mục gốc của dự án.
+2. Kiểm tra và chỉnh sửa các tham số kết nối cho đúng với SQL Server trên máy bạn:
+
+   DB_TYPE=mssql
+   DB_SERVER=localhost\SQLEXPRESS    # Thay đổi thành Tên Server của bạn (ví dụ: PHAZT\SQLEXPRESS)
+   DB_DATABASE=CosmeticsCRM_DB
+   PORT=3000
+   JWT_SECRET=cosmetics_crm_secret_2026
+
+Bước 3: Cài đặt các gói thư viện Node.js
+----------------------------------------
+Mở Terminal / Command Prompt tại thư mục dự án và chạy lệnh:
+
+   npm install
+
+Lệnh trên sẽ cài đặt các gói cần thiết: express, mssql, msnodesqlv8, dotenv, jsonwebtoken, bcryptjs, sql.js.
+
+Bước 4: Khởi chạy phần mềm
+--------------------------
+Tại Terminal, gõ lệnh:
+
+   npm start
+
+Khi màn hình Terminal hiển thị:
+   ✅ Đã kết nối thành công tới Microsoft SQL Server: CosmeticsCRM_DB
+   🚀 Server đang chạy: http://localhost:3000
+
+Mở trình duyệt web và truy cập địa chỉ: http://localhost:3000
+
+================================================================================
+III. THÔNG TIN TÀI KHOẢN MẶC ĐỊNH
+--------------------------------------------------------------------------------
+Hệ thống được khởi tạo sẵn các tài khoản demo sau:
+
+1. Quyền Quản trị viên (ADMIN):
+   - Tên đăng nhập: admin
+   - Mật khẩu: admin123
+
+2. Quyền Quản lý cửa hàng (MANAGER):
+   - Tên đăng nhập: manager1 (hoặc manager2)
+   - Mật khẩu: admin123 (hoặc manager123)
+
+3. Quyền Khách hàng (CUSTOMER):
+   - Tên đăng nhập: khach001 (khach002, khach003 ...)
+   - Mật khẩu: admin123 (hoặc customer123)
+
+================================================================================
+IV. HƯỚNG DẪN SỬ DỤNG THEO VÀI TRÒ (PHÂN RÃ CHỨC NĂNG)
+--------------------------------------------------------------------------------
+1. Giao diện ADMIN (Quản trị hệ thống):
+   - Giao diện Admin được thiết kế tách biệt hoàn toàn.
+   - Tìm kiếm & Lọc nâng cao: Tìm kiếm theo tên sản phẩm, nhà cung cấp, loại sản phẩm, trạng thái ra mắt.
+   - Quản lý tài khoản (CRUD): Xem danh sách tài khoản, phân quyền (ADMIN, MANAGER, CUSTOMER), khóa/mở khóa tài khoản.
+   - Quản lý Danh mục Sản phẩm & Nhà cung cấp: Thêm mới, chỉnh sửa, cập nhật số lượng tồn kho.
+
+2. Giao diện MANAGER (Quản lý Cửa hàng & CRM):
+   - Quản lý Khách hàng: Thêm khách hàng mới, khóa/mở khóa tài khoản khách hàng.
+   - Thống kê & Báo cáo CRM: Xem biểu đồ/báo cáo phân tích tỷ lệ độ tuổi khách hàng, sở thích làm đẹp (chăm sóc da, trang điểm, chống lão hóa...), loại da.
+   - Khảo sát thị hiếu sản phẩm mới:
+     * Tạo bài khảo sát mới kèm các câu hỏi (Trắc nghiệm, Đánh giá sao, Ý kiến).
+     * Gửi chiến dịch khảo sát tới danh sách khách hàng.
+     * Thống kê kết quả phản hồi của khách hàng đối với dòng sản phẩm mới.
+   - Tiếp nhận Phản hồi: Xem danh sách phản hồi từ khách hàng và gửi câu trả lời trực tiếp.
+
+3. Giao diện CUSTOMER (Khách hàng):
+   - Đăng ký / Đăng nhập: Đăng ký tài khoản khách hàng mới kèm thông tin độ tuổi, loại da, sở thích mỹ phẩm.
+   - Quản lý thông tin cá nhân: Cập nhật thông tin hồ sơ làm đẹp.
+   - Gửi Phản hồi: Đánh giá chất lượng sản phẩm (1-5 sao) và gửi bình luận.
+   - Làm bài Khảo sát: Nhận các bài khảo sát sản phẩm mới từ cửa hàng và điền ý kiến đánh giá.
+
+================================================================================
+V. HƯỚNG DẪN SAO LƯU VÀ PHỤC HỒI CƠ SỞ DỮ LIỆU (BACKUP & RESTORE)
+--------------------------------------------------------------------------------
+File kịch bản SQL sao lưu & phục hồi nằm tại: database/backup_restore.sql
+
+1. Sao lưu Cơ sở dữ liệu (Backup):
+   - Mở SSMS, chọn New Query và thực thi các câu lệnh backup trong file database/backup_restore.sql:
+   - Full Backup:
+     BACKUP DATABASE CosmeticsCRM_DB TO DISK = 'C:\Backup\CosmeticsCRM_Full.bak' WITH FORMAT, INIT, NAME = 'Full Backup CosmeticsCRM';
+   - Differential Backup (Sao lưu vi sai định kỳ):
+     BACKUP DATABASE CosmeticsCRM_DB TO DISK = 'C:\Backup\CosmeticsCRM_Diff.bak' WITH DIFFERENTIAL, NAME = 'Diff Backup CosmeticsCRM';
+
+2. Phục hồi Cơ sở dữ liệu (Restore test case):
+   - Kịch bản phục hồi khi xảy ra sự cố (Giả lập mất dữ liệu hoặc lỗi CSDL):
+     ALTER DATABASE CosmeticsCRM_DB SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+     RESTORE DATABASE CosmeticsCRM_DB FROM DISK = 'C:\Backup\CosmeticsCRM_Full.bak' WITH REPLACE;
+     ALTER DATABASE CosmeticsCRM_DB SET MULTI_USER;
+
+================================================================================
+                                HẾT HƯỚNG DẪN
+================================================================================

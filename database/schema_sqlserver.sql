@@ -39,7 +39,7 @@ GO
 CREATE TABLE dbo.Accounts (
     id          INT IDENTITY(1,1) PRIMARY KEY,
     username    NVARCHAR(50) NOT NULL UNIQUE,
-    password_hash NVARCHAR(255) NOT NULL,
+    password    NVARCHAR(255) NOT NULL,
     full_name   NVARCHAR(100) NOT NULL,
     email       NVARCHAR(100) UNIQUE,
     phone       NVARCHAR(20),
@@ -184,7 +184,7 @@ GO
 -- ============================================================
 
 -- Dữ liệu tài khoản
-INSERT INTO dbo.Accounts (username, password_hash, full_name, email, phone, role, status) VALUES
+INSERT INTO dbo.Accounts (username, password, full_name, email, phone, role, status) VALUES
 (N'admin',    N'$2a$10$rBV2JDeWW3.vKRhfOxHuGOCjfzBJJRBGDd3m2OoxmVDdq9wdm.KJC', N'Nguyễn Văn Admin',   N'admin@beautycrm.vn',      N'0901000001', 'ADMIN',    'ACTIVE'),
 (N'manager1', N'$2a$10$rBV2JDeWW3.vKRhfOxHuGOCjfzBJJRBGDd3m2OoxmVDdq9wdm.KJC', N'Trần Thị Lan',       N'lan.tran@beautycrm.vn',   N'0902000001', 'MANAGER',  'ACTIVE'),
 (N'manager2', N'$2a$10$rBV2JDeWW3.vKRhfOxHuGOCjfzBJJRBGDd3m2OoxmVDdq9wdm.KJC', N'Lê Minh Hương',      N'huong.le@beautycrm.vn',   N'0902000002', 'MANAGER',  'ACTIVE'),
@@ -236,6 +236,38 @@ INSERT INTO dbo.Products (name, category, supplier_id, price, stock_quantity, de
 (N'Mặt nạ ngủ Collagen Gold 50ml',                      N'Mặt nạ',          5, 390000,  60, N'Mặt nạ ngủ hữu cơ chứa collagen vàng và chiết xuất hoa hồng.',          'OFFICIAL'),
 (N'Son môi Glossy Shine - Bộ sưu tập Hè 2026',         N'Son môi',         1, 420000,   0, N'Dòng son bóng lì cao cấp hiệu ứng môi căng bóng 3D. Ra mắt hè 2026.',  'UPCOMING'),
 (N'Serum chống lão hóa Peptide Complex',                N'Serum',           4, 950000,   0, N'Serum Peptide thế hệ mới xóa nếp nhăn, tăng độ đàn hồi da.',           'UPCOMING');
+GO
+
+-- Dữ liệu chiến dịch khảo sát (Surveys)
+INSERT INTO dbo.Surveys (title, description, target_product_id, start_date, end_date, status, created_by) VALUES
+(N'Khảo sát thị hiếu Son môi Hè 2026', N'Thu thập ý kiến khách hàng về màu sắc, chất son và mức giá mong muốn cho dòng son Glossy Shine.', 9, '2026-06-01', '2026-08-31', 'ACTIVE', 2),
+(N'Khảo sát nhu cầu Serum chống lão hóa Peptide', N'Khảo sát trải nghiệm dưỡng da chống nhăn dành cho độ tuổi 25+ trước ngày mở bán chính thức.', 10, '2026-06-15', '2026-09-30', 'ACTIVE', 3),
+(N'Khảo sát mức độ hài lòng dịch vụ Quý 2/2026', N'Đánh giá chất lượng phục vụ, đóng gói và tư vấn làm đẹp của BeautyCRM.', NULL, '2026-04-01', '2026-06-30', 'ACTIVE', 2);
+GO
+
+-- Dữ liệu câu hỏi khảo sát (Questions)
+INSERT INTO dbo.Questions (survey_id, question_text, question_type, options, order_index) VALUES
+(1, N'Bạn thích hiệu ứng son nào nhất trong mùa hè?', 'SINGLE_CHOICE', N'["Bóng mọng nước (Glossy)","Nhung mịn lì (Velvet Matte)","Bán lì dưỡng ẩm (Satin)","Son dưỡng có màu nhẹ nhàng"]', 1),
+(1, N'Tông màu son bạn thường xuyên sử dụng nhất?', 'MULTI_CHOICE', N'["Đỏ đất / Cam cháy","Hồng trà sữa / Nude","Đỏ Ruby quyến rũ","Cam san hô tươi tắn"]', 2),
+(1, N'Mức giá bạn sẵn sàng chi trả cho một thỏi son cao cấp này?', 'SINGLE_CHOICE', N'["Dưới 300.000₫","Từ 300.000₫ - 450.000₫","Từ 450.000₫ - 600.000₫","Trên 600.000₫"]', 3),
+(1, N'Đánh giá độ hào hứng của bạn với dòng son mới này?', 'RATING', NULL, 4),
+(1, N'Bạn có góp ý gì thêm về thiết kế bao bì hay mùi hương của thỏi son không?', 'TEXT', NULL, 5),
+
+(2, N'Vấn đề lớn nhất về da mà bạn đang muốn cải thiện?', 'SINGLE_CHOICE', N'["Nếp nhăn li ti và rãnh cười","Da chảy xệ, thiếu đàn hồi","Đốm nâu, sạm nám","Da khô sần, thiếu sức sống"]', 1),
+(2, N'Đánh giá sự kỳ vọng của bạn đối với hiệu quả phục hồi da của Peptide?', 'RATING', NULL, 2),
+(2, N'Bạn mong muốn sản phẩm có thêm thành phần dưỡng nào?', 'TEXT', NULL, 3),
+
+(3, N'Đánh giá tổng quan chất lượng đóng gói và giao hàng?', 'RATING', NULL, 1),
+(3, N'Bạn đánh giá thế nào về sự tận tình của đội ngũ tư vấn viên?', 'RATING', NULL, 2);
+GO
+
+-- Dữ liệu đánh giá & phản hồi của khách hàng (Feedbacks)
+INSERT INTO dbo.Feedbacks (customer_id, product_id, rating, content, status, reply_content, created_at) VALUES
+(1, 3, 5, N'Serum Vitamin C dùng rất êm, sau 2 tuần các vết thâm mụn mờ rõ rệt, da sáng và đều màu hơn hẳn!', 'REPLIED', N'BeautyCRM cảm ơn bạn Mai rất nhiều! Chúc bạn luôn có làn da rạng rỡ và tự tin nhé! 🌸', DATEADD(day, -5, GETDATE())),
+(1, 1, 5, N'Son màu đỏ Ruby siêu tôn da, chất son mềm mướt không hề bị khô môi.', 'PENDING', NULL, DATEADD(day, -2, GETDATE())),
+(2, 4, 4, N'Kem chống nắng nâng tone tự nhiên, kiềm dầu tốt tầm 5-6 tiếng, không gây bết dính.', 'REPLIED', N'Cảm ơn bạn Hà đã tin tưởng lựa chọn sản phẩm của BeautyCRM. Rất vui được tiếp tục phục vụ bạn!', DATEADD(day, -4, GETDATE())),
+(3, 2, 5, N'Kem dưỡng Retinol đỉnh cao! Da căng bóng mịn màng sau 1 tháng sử dụng kiên trì.', 'PENDING', NULL, DATEADD(day, -1, GETDATE())),
+(4, 6, 4, N'Sữa rửa mặt trà xanh bọt mịn, rửa xong da vẫn mềm ẩm không bị căng rát.', 'PENDING', NULL, GETDATE());
 GO
 
 PRINT N'Đã tạo CSDL và chèn dữ liệu mẫu thành công!';

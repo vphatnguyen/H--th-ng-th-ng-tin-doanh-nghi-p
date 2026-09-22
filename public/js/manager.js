@@ -510,7 +510,7 @@ async function fetchAndRenderFeedbacks(filters) {
                 <div class="feedback-product">💄 ${f.product_name}</div>
               </div>
               <div style="display:flex;align-items:center;gap:10px">
-                <div class="stars">${renderStars(f.rating)}</div>
+                <div class="stars" style="color:#fbbf24">${renderStars(f.rating)}</div>
                 ${f.status === 'PENDING'
                   ? `<span class="badge badge-pending">🕐 Chờ phản hồi</span>`
                   : `<span class="badge badge-replied">✅ Đã phản hồi</span>`}
