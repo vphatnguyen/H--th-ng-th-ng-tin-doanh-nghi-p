@@ -1,15 +1,19 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BeautyCRM – Hệ thống CRM Mỹ Phẩm</title>
-  <meta name="description" content="Hệ thống CRM quản lý chuỗi cửa hàng mỹ phẩm - Quản lý khách hàng, khảo sát sản phẩm mới và phân tích thị hiếu làm đẹp.">
+  <meta name="description"
+    content="Hệ thống CRM quản lý chuỗi cửa hàng mỹ phẩm - Quản lý khách hàng, khảo sát sản phẩm mới và phân tích thị hiếu làm đẹp.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
   <link rel="stylesheet" href="/css/style.css">
 </head>
+
 <body>
   <!-- ===== LOGIN SCREEN ===== -->
   <div id="login-screen" class="login-screen">
@@ -20,10 +24,16 @@
     </div>
     <div class="login-card">
       <div class="login-logo">
-        <span class="logo-icon">🌸</span>
+        <div class="logo-icon">
+          <svg width="48" height="48" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="48" fill="#2d6a4f"/>
+            <circle cx="50" cy="50" r="40" fill="none" stroke="white" stroke-width="3"/>
+            <text x="50" y="67" text-anchor="middle" font-family="Georgia,serif" font-size="44" font-weight="bold" fill="white">&#x1d34;</text>
+          </svg>
+        </div>
         <div>
-          <h1 class="logo-title">BeautyCRM</h1>
-          <p class="logo-sub">Hệ thống quản lý chuỗi cửa hàng mỹ phẩm</p>
+          <h1 class="logo-title">HASAKI<span style="font-size:14px;font-weight:500;opacity:0.8">.vn</span></h1>
+          <p class="logo-sub">Tiết kiệm hơn, mọi lúc</p>
         </div>
       </div>
 
@@ -63,10 +73,16 @@
     </div>
     <div class="login-card register-card">
       <div class="login-logo">
-        <span class="logo-icon">🌸</span>
+        <div class="logo-icon">
+          <svg width="48" height="48" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="48" fill="#2d6a4f"/>
+            <circle cx="50" cy="50" r="40" fill="none" stroke="white" stroke-width="3"/>
+            <text x="50" y="67" text-anchor="middle" font-family="Georgia,serif" font-size="44" font-weight="bold" fill="white">&#x1d34;</text>
+          </svg>
+        </div>
         <div>
-          <h1 class="logo-title">Đăng ký tài khoản</h1>
-          <p class="logo-sub">Tham gia BeautyCRM ngay hôm nay</p>
+          <h1 class="logo-title">HASAKI<span style="font-size:14px;font-weight:500;opacity:0.8">.vn</span></h1>
+          <p class="logo-sub">Đăng ký tài khoản</p>
         </div>
       </div>
       <form id="register-form" class="login-form">
@@ -133,9 +149,15 @@
     <!-- Sidebar Navigation -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
-        <span class="sidebar-logo">🌸</span>
+        <div class="sidebar-logo">
+          <svg width="36" height="36" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="48" fill="rgba(255,255,255,0.15)"/>
+            <circle cx="50" cy="50" r="40" fill="none" stroke="white" stroke-width="3"/>
+            <text x="50" y="67" text-anchor="middle" font-family="Georgia,serif" font-size="44" font-weight="bold" fill="white">&#x1d34;</text>
+          </svg>
+        </div>
         <div>
-          <h2 class="sidebar-title">BeautyCRM</h2>
+          <h2 class="sidebar-title">HASAKI<span style="font-size:11px;font-weight:500;opacity:0.75">.vn</span></h2>
           <span class="sidebar-role-badge" id="sidebar-role-badge">Admin</span>
         </div>
         <button class="sidebar-close" onclick="toggleSidebar()" id="sidebar-close-btn">✕</button>
@@ -159,8 +181,10 @@
           <p class="role-switcher-label">Chuyển đổi demo:</p>
           <div class="role-switcher-btns">
             <button class="rsw-btn admin" onclick="quickLogin('admin','admin123')" title="Đăng nhập Admin">👑</button>
-            <button class="rsw-btn manager" onclick="quickLogin('manager1','manager123')" title="Đăng nhập Manager">📊</button>
-            <button class="rsw-btn customer" onclick="quickLogin('khach001','customer123')" title="Đăng nhập Customer">🛍️</button>
+            <button class="rsw-btn manager" onclick="quickLogin('manager1','manager123')"
+              title="Đăng nhập Manager">📊</button>
+            <button class="rsw-btn customer" onclick="quickLogin('khach001','customer123')"
+              title="Đăng nhập Customer">🛍️</button>
           </div>
         </div>
         <button class="btn-logout" onclick="logout()">🚪 Đăng xuất</button>
@@ -202,4 +226,5 @@
   <script src="/js/manager.js"></script>
   <script src="/js/customer.js"></script>
 </body>
+
 </html>
