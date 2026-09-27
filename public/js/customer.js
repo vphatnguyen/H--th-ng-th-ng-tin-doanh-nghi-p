@@ -173,7 +173,7 @@ async function startSurvey(id) {
     `;
 
     questions.forEach((q, i) => {
-      body += `<div style="background:rgba(15,23,42,0.5);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px">
+      body += `<div style="background:var(--bg-card-solid);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px">
         <div style="font-size:13px;font-weight:600;margin-bottom:12px;line-height:1.5">${i + 1}. ${q.question_text}</div>`;
 
       if (q.question_type === 'SINGLE_CHOICE' && Array.isArray(q.options)) {
@@ -529,9 +529,9 @@ async function renderCustomerProfile() {
         <div class="card" style="margin-top:20px">
           <div class="card-title">🔒 Thông tin tài khoản</div>
           <table style="width:100%">
-            <tr><td style="padding:8px 0;color:var(--text-muted);font-size:13px;width:40%">Tên đăng nhập</td><td style="font-weight:600">@${account.username}</td></tr>
-            <tr><td style="padding:8px 0;color:var(--text-muted);font-size:13px">Hạng thành viên</td><td>${customer ? membershipBadge(customer.membership_tier) : '—'}</td></tr>
-            <tr><td style="padding:8px 0;color:var(--text-muted);font-size:13px">Ngày đăng ký</td><td>${formatDate(account.created_at)}</td></tr>
+            <tr><td style="padding:8px 0;color:#ffffff;font-size:13px;width:40%">Tên đăng nhập</td><td style="font-weight:600">@${account.username}</td></tr>
+            <tr><td style="padding:8px 0;color:#ffffff;font-size:13px">Hạng thành viên</td><td>${customer ? membershipBadge(customer.membership_tier) : '—'}</td></tr>
+            <tr><td style="padding:8px 0;color:#ffffff;font-size:13px">Ngày đăng ký</td><td>${formatDate(account.created_at)}</td></tr>
           </table>
         </div>
       </div>

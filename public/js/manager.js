@@ -182,7 +182,7 @@ async function fetchAndRenderCustomers(filters) {
                       ? `<button class="btn btn-warning btn-sm" onclick="toggleCustomerStatus(${c.id},'LOCKED','${c.full_name.replace(/'/g,"\\'")}')">🔒</button>`
                       : `<button class="btn btn-success btn-sm" onclick="toggleCustomerStatus(${c.id},'ACTIVE','${c.full_name.replace(/'/g,"\\'")}')">🔓</button>`
                     }
-                    <button class="btn btn-danger btn-sm" onclick="deleteCustomer(${c.id},'${c.full_name.replace(/'/g,"\\'")}')">🗑️</button>
+                    <button class="btn btn-trash btn-sm" onclick="deleteCustomer(${c.id},'${c.full_name.replace(/'/g,"\\'")}')"><svg class="trash-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2v2H2v2h1v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6h1V4h-4V2h-2v2H9V2H6zm7 5v9h-2V7h2zM9 2V4h6V2H9z"/></svg></button>
                   </div>
                 </td>
               </tr>
@@ -347,7 +347,7 @@ function addSurveyQuestion() {
   if (!container) return;
   const div = document.createElement('div');
   div.id = `q-block-${questionCount}`;
-  div.style.cssText = 'background:rgba(15,23,42,0.5);border:1px solid var(--border);border-radius:10px;padding:14px';
+  div.style.cssText = 'background:var(--bg-card-solid);border:1px solid var(--border);border-radius:10px;padding:14px';
   div.innerHTML = `
     <div style="display:flex;gap:10px;margin-bottom:10px">
       <input placeholder="Nội dung câu hỏi ${questionCount}..." id="q-text-${questionCount}" style="flex:1">
@@ -427,7 +427,7 @@ async function viewSurveyResults(id, title) {
     let body = `<div style="margin-bottom:16px"><strong>👥 Tổng số người tham gia: <span style="color:var(--rose-300)">${total_respondents}</span></strong></div>`;
 
     results.forEach((r, i) => {
-      body += `<div style="background:rgba(15,23,42,0.5);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px">
+      body += `<div style="background:var(--bg-card-solid);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px">
         <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--text-primary)">
           ${i + 1}. ${r.question_text}
           <span style="color:var(--text-muted);font-weight:400;font-size:11px">&nbsp;(${r.total_responses} phản hồi)</span>

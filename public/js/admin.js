@@ -58,7 +58,7 @@ function renderAccountsTable(accounts, searchParams = {}) {
               <td>
                 <div style="display:flex;gap:6px">
                   <button class="btn btn-secondary btn-sm" onclick="openEditAccountModalById(${a.id})">✏️</button>
-                  <button class="btn btn-danger btn-sm" onclick="deleteAccount(${a.id},'${a.full_name.replace(/'/g, "\\'")}')">🗑️</button>
+                  <button class="btn btn-trash btn-sm" onclick="deleteAccount(${a.id},'${a.full_name.replace(/'/g, "\\'")}')"><svg class="trash-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2v2H2v2h1v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6h1V4h-4V2h-2v2H9V2H6zm7 5v9h-2V7h2zM9 2V4h6V2H9z"/></svg></button>
                 </div>
               </td>
             </tr>
@@ -263,7 +263,7 @@ async function fetchAndRenderProducts(filters) {
                 <td>
                   <div style="display:flex;gap:6px">
                     <button class="btn btn-secondary btn-sm" onclick="openEditProductModalById(${p.id})">✏️</button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteProduct(${p.id},'${p.name.replace(/'/g,"\\'")}')">🗑️</button>
+                    <button class="btn btn-trash btn-sm" onclick="deleteProduct(${p.id},'${p.name.replace(/'/g,"\\'")}')"><svg class="trash-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2v2H2v2h1v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6h1V4h-4V2h-2v2H9V2H6zm7 5v9h-2V7h2zM9 2V4h6V2H9z"/></svg></button>
                   </div>
                 </td>
               </tr>
@@ -439,7 +439,7 @@ function renderSuppliersTable(suppliers) {
               <td>
                 <div style="display:flex;gap:6px">
                   <button class="btn btn-secondary btn-sm" onclick="openEditSupplierModalById(${s.id})">✏️</button>
-                  <button class="btn btn-danger btn-sm" onclick="deleteSupplier(${s.id},'${s.name.replace(/'/g,"\\'")}')">🗑️</button>
+                  <button class="btn btn-trash btn-sm" onclick="deleteSupplier(${s.id},'${s.name.replace(/'/g,"\\'")}')"><svg class="trash-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2v2H2v2h1v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6h1V4h-4V2h-2v2H9V2H6zm7 5v9h-2V7h2zM9 2V4h6V2H9z"/></svg></button>
                 </div>
               </td>
             </tr>
@@ -610,7 +610,7 @@ function renderAdminDatabase() {
     <div class="card">
       <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
         <span>💻 Console Output</span>
-        <button class="btn btn-secondary btn-sm" onclick="clearConsole()">🗑️ Xóa console</button>
+        <button class="btn btn-trash btn-sm" onclick="clearConsole()"><svg class="trash-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="margin-right:4px"><path d="M6 2v2H2v2h1v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6h1V4h-4V2h-2v2H9V2H6zm7 5v9h-2V7h2zM9 2V4h6V2H9z"/></svg> Xóa console</button>
       </div>
       <div class="db-console">
         <div class="db-console-output" id="db-console-output">
