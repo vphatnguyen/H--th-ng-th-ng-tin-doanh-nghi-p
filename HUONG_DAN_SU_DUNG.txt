@@ -118,5 +118,55 @@ File kịch bản SQL sao lưu & phục hồi nằm tại: database/backup_resto
      ALTER DATABASE CosmeticsCRM_DB SET MULTI_USER;
 
 ================================================================================
+VI. CÁC LỖI KẾT NỐI DATABASE THƯỜNG GẶP VÀ CÁCH KHẮC PHỤC CHUẨN (NEW)
+--------------------------------------------------------------------------------
+Khi clone mã nguồn từ GitHub về máy cá nhân (Local), hệ thống có thể gặp một số 
+lỗi môi trường do sự khác biệt về driver và cấu hình SQL Server. Dưới đây là 3 
+trường hợp lỗi phổ biến nhất và cách xử lý dứt điểm:
+
+1. Lỗi hệ thống trơ trơ, không nhận file .env mới chỉnh sửa
+   - Triệu chứng: Terminal hiển thị cấu hình từ máy của người cũ (Ví dụ: PHAZT\SQLEXPRESS) 
+     mặc dù bạn đã sửa đổi file .env.
+   - Nguyên nhân: File cấu hình thực tế `.env` nằm trong danh sách chặn của Git (.gitignore) 
+     nên không có sẵn khi clone code về. Bạn chỉ đang chỉnh sửa trên file mẫu `.env.example`.
+   - Cách khắc phục:
+     * Bước 1: Click chuột phải vào file `.env.example` -> Chọn Copy.
+     * Bước 2: Paste ngay tại thư mục gốc ngoài cùng (ngang hàng package.json).
+     * Bước 3: Đổi tên file vừa paste chính xác thành `.env` (Xóa đuôi .example đi).
+     * Bước 4: Nhấn Ctrl + C để tắt Server cũ, chạy lại `npm start` để hệ thống nạp lại.
+
+2. Lỗi vấp Driver kết nối hệ thống (Data source name not found)
+   - Triệu chứng: Terminal báo lỗi màu vàng: 
+     "⚠️ Không thể kết nối SQL Server, chuyển sang SQLite dự phòng: [Microsoft][ODBC Driver Manager] Data source name not found..."
+   - Nguyên nhân: Thư viện kết nối mạng (`msnodesqlv8`) kén chọn và bắt buộc Windows phải 
+     có bộ thông dịch driver tương ứng. Máy cá nhân mới cài đặt thường thiếu driver này.
+   - Cách khắc phục (Chọn 1 trong 2 cách):
+     * Cách 1 (Khuyên dùng): Tải bộ cài đặt chính thức `ODBC Driver 18 for SQL Server` 
+       từ trang chủ Microsoft (chọn bản Windows x64 phù hợp). Cài đặt xong, TẮT HẲN VS Code 
+       và mở lại để Windows nhận diện Driver mới.
+     * Cách 2 (Sửa trực tiếp trong code): Mở file cấu hình kết nối database trong dự án 
+       (nơi chứa hàm `initSqlServer()`), tìm đến đoạn chuỗi kết nối (Connection String) 
+       và sửa Driver từ `{ODBC Driver 18 for SQL Server}` thành `{SQL Server}` để ép 
+       Node.js sử dụng bộ driver mặc định luôn có sẵn 100% trên mọi máy Windows.
+
+3. Lỗi Connection Timeout (Bị treo vô hạn ở dòng "Đang kết nối...")
+   - Triệu chứng: Ứng dụng đứng im vĩnh viễn ở dòng log "Đang kết nối Microsoft SQL Server..." 
+     và không báo thành công hay thất bại.
+   - Nguyên nhân: Sai lệch phiên bản cài đặt SQL Server. Mã nguồn mặc định trỏ vào 
+     bản thu nhỏ `.\SQLEXPRESS`, nhưng máy bạn có thể đang cài bản SQL Server chuẩn 
+     (Default Instance) chạy ngầm dưới tên `MSSQLSERVER` hoặc `localhost`.
+   - Cách khắc phục:
+     * Bước 1: Kiểm tra Service trong Windows: Nhấn Windows + R -> gõ `services.msc`. 
+       Tìm dịch vụ `SQL Server (MSSQLSERVER)` hoặc `SQL Server (SQLEXPRESS)`. Đảm bảo trạng 
+       thái của nó đang là "Running".
+     * Bước 2: Sửa file `.env`: 
+       Nếu máy bạn chạy bản `MSSQLSERVER`, hãy sửa dòng `DB_SERVER=.\SQLEXPRESS` thành 
+       `DB_SERVER=localhost` (hoặc chỉ để dấu chấm `.`).
+     * Bước 3: Bật cổng mạng kết nối cho SQL Server: Mở phần mềm `SQL Server Configuration Manager` 
+       trên máy -> Vào mục `Protocols for SQLEXPRESS/MSSQLSERVER` -> Bật `TCP/IP` sang `Enabled`. 
+       Tại tab IP Addresses, kéo xuống mục `IPAll` và điền TCP Port là `1433`. Tiến hành 
+       Restart lại dịch vụ SQL Server để áp dụng.
+
+================================================================================
                                 HẾT HƯỚNG DẪN
 ================================================================================
