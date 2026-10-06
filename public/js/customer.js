@@ -202,7 +202,7 @@ async function startSurvey(id) {
             <div style="display:flex;gap:6px" onmouseleave="resetSurveyStar(${q.id})">
               ${[1, 2, 3, 4, 5].map(s => `
                 <span id="survey-star-${q.id}-${s}" 
-                      style="cursor:pointer;font-size:32px;color:rgba(255,255,255,0.22);transition:all 0.15s ease;user-select:none;display:inline-block" 
+                      style="cursor:pointer;font-size:32px;color:#94a3b8;transition:all 0.15s ease;user-select:none;display:inline-block" 
                       title="${s} sao"
                       onmouseover="hoverSurveyStar(${q.id}, ${s})"
                       onclick="selectSurveyStar(${q.id}, ${s})">★</span>
@@ -261,7 +261,7 @@ function updateSurveyStarsUI(qid, val) {
         starEl.style.textShadow = '0 0 12px rgba(251, 191, 36, 0.6)';
         starEl.style.transform = 'scale(1.15)';
       } else {
-        starEl.style.color = 'rgba(255, 255, 255, 0.22)';
+        starEl.style.color = '#94a3b8';
         starEl.style.textShadow = 'none';
         starEl.style.transform = 'scale(1)';
       }
@@ -376,7 +376,7 @@ async function openNewFeedbackModal() {
         <div style="display:flex;gap:8px" onmouseleave="resetFeedbackStar()">
           ${[1,2,3,4,5].map(n => `
             <span id="fb-star-${n}" 
-                  style="cursor:pointer;font-size:36px;color:rgba(255,255,255,0.22);transition:all 0.15s ease;user-select:none;display:inline-block" 
+                  style="cursor:pointer;font-size:36px;color:#94a3b8;transition:all 0.15s ease;user-select:none;display:inline-block" 
                   title="${n} sao"
                   onmouseover="hoverFeedbackStar(${n})"
                   onclick="setFeedbackStar(${n})">★</span>
@@ -428,7 +428,7 @@ function updateFeedbackStarsUI(val) {
         lbl.style.textShadow = '0 0 12px rgba(251, 191, 36, 0.6)';
         lbl.style.transform = 'scale(1.18)';
       } else {
-        lbl.style.color = 'rgba(255, 255, 255, 0.22)';
+        lbl.style.color = '#94a3b8';
         lbl.style.textShadow = 'none';
         lbl.style.transform = 'scale(1)';
       }

@@ -14,11 +14,67 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Đảm bảo CSDL được kết nối trước khi xử lý request
 let dbInitPromise = null;
+let appSchemaReady = false;
 function ensureDb() {
   if (!dbInitPromise) {
-    dbInitPromise = db.init();
+    dbInitPromise = db.init().then(async () => {
+      if (!appSchemaReady) {
+        await ensureAppSchema();
+        appSchemaReady = true;
+      }
+      return db;
+    });
   }
   return dbInitPromise;
+}
+
+async function ensureAppSchema() {
+  await db.prepare(`
+    IF OBJECT_ID('dbo.SurveyRecipients', 'U') IS NULL
+    CREATE TABLE dbo.SurveyRecipients (
+      id INT IDENTITY(1,1) PRIMARY KEY,
+      survey_id INT NOT NULL,
+      customer_id INT NOT NULL,
+      sent_by INT,
+      sent_at DATETIME2 DEFAULT GETDATE(),
+      CONSTRAINT FK_SurveyRecipients_Surveys FOREIGN KEY (survey_id) REFERENCES dbo.Surveys(id) ON DELETE CASCADE,
+      CONSTRAINT FK_SurveyRecipients_Customers FOREIGN KEY (customer_id) REFERENCES dbo.Customers(id),
+      CONSTRAINT FK_SurveyRecipients_Accounts FOREIGN KEY (sent_by) REFERENCES dbo.Accounts(id),
+      CONSTRAINT UQ_SurveyRecipients UNIQUE (survey_id, customer_id)
+    )
+  `).run();
+}
+
+function buildSqlServerBackupScript(type, filename) {
+  const backupDir = 'C:\\CosmeticsCRM_Backup';
+  if (type === 'DIFFERENTIAL') {
+    return `BACKUP DATABASE ${db.databaseName}\nTO DISK = N'${backupDir}\\${filename}.bak'\nWITH DIFFERENTIAL, INIT, NAME = N'Differential Backup - CosmeticsCRM', STATS = 10;`;
+  }
+  return `BACKUP DATABASE ${db.databaseName}\nTO DISK = N'${backupDir}\\${filename}.bak'\nWITH INIT, NAME = N'Full Backup - CosmeticsCRM', STATS = 10;`;
+}
+
+function buildSqlServerRestoreScript(fullFile, diffFile) {
+  return `USE master;\nALTER DATABASE ${db.databaseName} SET SINGLE_USER WITH ROLLBACK IMMEDIATE;\nRESTORE DATABASE ${db.databaseName}\nFROM DISK = N'C:\\CosmeticsCRM_Backup\\${fullFile}.bak'\nWITH NORECOVERY, REPLACE, STATS = 10;\nRESTORE DATABASE ${db.databaseName}\nFROM DISK = N'C:\\CosmeticsCRM_Backup\\${diffFile}.bak'\nWITH RECOVERY, STATS = 10;\nALTER DATABASE ${db.databaseName} SET MULTI_USER;`;
+}
+
+async function assignSurveyRecipients(surveyId, customerIds, sentBy) {
+  const ids = Array.isArray(customerIds) ? customerIds.map(Number).filter(Boolean) : [];
+  const recipients = ids.length > 0
+    ? ids.map(id => ({ id }))
+    : await db.prepare(`
+        SELECT c.id
+        FROM Customers c
+        JOIN Accounts a ON c.account_id = a.id
+        WHERE a.role = 'CUSTOMER' AND a.status = 'ACTIVE'
+      `).all();
+
+  for (const recipient of recipients) {
+    await db.prepare(`
+      IF NOT EXISTS (SELECT 1 FROM SurveyRecipients WHERE survey_id = ? AND customer_id = ?)
+      INSERT INTO SurveyRecipients (survey_id, customer_id, sent_by) VALUES (?, ?, ?)
+    `).run(surveyId, recipient.id, surveyId, recipient.id, sentBy);
+  }
+  return recipients.length;
 }
 
 app.use(async (req, res, next) => {
@@ -252,6 +308,79 @@ app.delete('/api/admin/suppliers/:id', authMiddleware, requireRole('ADMIN'), asy
   }
 });
 
+// ========== ADMIN: SQL Server Backup / Restore ==========
+app.get('/api/admin/database/info', authMiddleware, requireRole('ADMIN'), async (req, res) => {
+  res.json({
+    engine: db.engine,
+    database: db.databaseName,
+    backup_dir: 'C:\\CosmeticsCRM_Backup'
+  });
+});
+
+app.post('/api/admin/database/backup', authMiddleware, requireRole('ADMIN'), async (req, res) => {
+  try {
+    const type = req.body.type === 'DIFFERENTIAL' ? 'DIFFERENTIAL' : 'FULL';
+    const defaultName = `CosmeticsCRM_${type}_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`;
+    const filename = String(req.body.filename || defaultName).replace(/[^a-zA-Z0-9_-]/g, '_');
+    const script = buildSqlServerBackupScript(type, filename);
+    try {
+      await db.prepare("EXEC master.dbo.xp_create_subdir N'C:\\CosmeticsCRM_Backup'").run();
+    } catch {
+      // SQL Server may disable xp_create_subdir; backup will still work if the folder already exists.
+    }
+    await db.prepare(script).run();
+    res.json({
+      message: type === 'DIFFERENTIAL' ? 'Đã sao lưu Differential Backup thành công' : 'Đã sao lưu Full Backup thành công',
+      filename: `${filename}.bak`,
+      path: `C:\\CosmeticsCRM_Backup\\${filename}.bak`,
+      script
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/database/restore-script', authMiddleware, requireRole('ADMIN'), async (req, res) => {
+  const fullFile = String(req.body.full_file || 'CosmeticsCRM_FULL_YYYYMMDD').replace(/\.bak$/i, '');
+  const diffFile = String(req.body.diff_file || 'CosmeticsCRM_DIFF_YYYYMMDD').replace(/\.bak$/i, '');
+  const fs = require('fs');
+  const backupDir = 'C:\\CosmeticsCRM_Backup';
+  const fullPath = path.join(backupDir, `${fullFile}.bak`);
+  const diffPath = path.join(backupDir, `${diffFile}.bak`);
+  const script = buildSqlServerRestoreScript(fullFile, diffFile);
+  res.json({
+    message: 'Script phục hồi đã sẵn sàng. Chạy script này trong SSMS với quyền quản trị SQL Server.',
+    script,
+    verification: {
+      full_backup_exists: fs.existsSync(fullPath),
+      differential_backup_exists: fs.existsSync(diffPath),
+      full_path: fullPath,
+      diff_path: diffPath
+    }
+  });
+});
+
+// ========== ADMIN: List existing backup files ==========
+app.get('/api/admin/database/backups', authMiddleware, requireRole('ADMIN'), async (req, res) => {
+  try {
+    const fs = require('fs');
+    const backupDir = 'C:\\CosmeticsCRM_Backup';
+    let list = [];
+    if (fs.existsSync(backupDir)) {
+      list = fs.readdirSync(backupDir)
+        .filter(f => f.toLowerCase().endsWith('.bak'))
+        .map(f => {
+          const stat = fs.statSync(path.join(backupDir, f));
+          return { name: f, size: stat.size, created_at: stat.mtime };
+        })
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    }
+    res.json({ backup_dir: backupDir, backups: list });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ========== MANAGER: Dashboard Analytics ==========
 app.get('/api/manager/analytics', authMiddleware, requireRole('MANAGER'), async (req, res) => {
   try {
@@ -374,7 +503,8 @@ app.get('/api/manager/surveys', authMiddleware, requireRole('MANAGER'), async (r
     const surveys = await db.prepare(`
       SELECT s.*, p.name as product_name, a.full_name as creator_name,
       (SELECT COUNT(*) FROM SurveyResults sr WHERE sr.survey_id = s.id) as response_count,
-      (SELECT COUNT(*) FROM Questions q WHERE q.survey_id = s.id) as question_count
+      (SELECT COUNT(*) FROM Questions q WHERE q.survey_id = s.id) as question_count,
+      (SELECT COUNT(*) FROM SurveyRecipients r WHERE r.survey_id = s.id) as recipient_count
       FROM Surveys s
       LEFT JOIN Products p ON s.target_product_id = p.id
       LEFT JOIN Accounts a ON s.created_by = a.id
@@ -388,7 +518,7 @@ app.get('/api/manager/surveys', authMiddleware, requireRole('MANAGER'), async (r
 
 app.post('/api/manager/surveys', authMiddleware, requireRole('MANAGER'), async (req, res) => {
   try {
-    const { title, description, target_product_id, start_date, end_date, questions } = req.body;
+    const { title, description, target_product_id, start_date, end_date, questions, recipient_customer_ids } = req.body;
     if (!title) return res.status(400).json({ error: 'Tiêu đề khảo sát là bắt buộc' });
     const surveyResult = await db.prepare('INSERT INTO Surveys (title, description, target_product_id, start_date, end_date, status, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)').run(title, description || null, target_product_id || null, start_date || null, end_date || null, 'DRAFT', req.user.id);
     if (questions && questions.length > 0) {
@@ -397,7 +527,8 @@ app.post('/api/manager/surveys', authMiddleware, requireRole('MANAGER'), async (
         await db.prepare('INSERT INTO Questions (survey_id, question_text, question_type, options, order_index) VALUES (?, ?, ?, ?, ?)').run(surveyResult.lastInsertRowid, q.question_text, q.question_type, q.options ? JSON.stringify(q.options) : null, i + 1);
       }
     }
-    res.status(201).json({ message: 'Tạo khảo sát thành công', id: surveyResult.lastInsertRowid });
+    const recipientCount = await assignSurveyRecipients(surveyResult.lastInsertRowid, recipient_customer_ids, req.user.id);
+    res.status(201).json({ message: 'Tạo khảo sát thành công', id: surveyResult.lastInsertRowid, recipient_count: recipientCount });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -408,6 +539,63 @@ app.put('/api/manager/surveys/:id/status', authMiddleware, requireRole('MANAGER'
     const { status } = req.body;
     await db.prepare('UPDATE Surveys SET status = ? WHERE id = ?').run(status, req.params.id);
     res.json({ message: `Đã cập nhật trạng thái khảo sát thành ${status}` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/manager/surveys/:id/recipients', authMiddleware, requireRole('MANAGER'), async (req, res) => {
+  try {
+    const rows = await db.prepare(`
+      SELECT c.id as customer_id, a.full_name, a.username, a.email, a.phone, a.status,
+        CASE WHEN r.id IS NULL THEN 0 ELSE 1 END as is_recipient,
+        CASE WHEN sr.id IS NULL THEN 0 ELSE 1 END as already_submitted,
+        r.sent_at
+      FROM Customers c
+      JOIN Accounts a ON c.account_id = a.id
+      LEFT JOIN SurveyRecipients r ON r.customer_id = c.id AND r.survey_id = ?
+      LEFT JOIN SurveyResults sr ON sr.customer_id = c.id AND sr.survey_id = ?
+      WHERE a.role = 'CUSTOMER'
+      ORDER BY is_recipient DESC, a.full_name
+    `).all(req.params.id, req.params.id);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/manager/surveys/:id/recipients', authMiddleware, requireRole('MANAGER'), async (req, res) => {
+  try {
+    const { customer_ids } = req.body;
+    await db.prepare('DELETE FROM SurveyRecipients WHERE survey_id = ?').run(req.params.id);
+    const recipientCount = await assignSurveyRecipients(req.params.id, customer_ids, req.user.id);
+    res.json({ message: 'Đã cập nhật danh sách người nhận khảo sát', recipient_count: recipientCount });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ========== MANAGER: Gửi (kích hoạt) khảo sát đến người nhận ==========
+app.post('/api/manager/surveys/:id/send', authMiddleware, requireRole('MANAGER'), async (req, res) => {
+  try {
+    const survey = await db.prepare('SELECT id, status FROM Surveys WHERE id = ?').get(req.params.id);
+    if (!survey) return res.status(404).json({ error: 'Không tìm thấy khảo sát' });
+
+    const countRow = await db.prepare('SELECT COUNT(*) as cnt FROM SurveyRecipients WHERE survey_id = ?').get(req.params.id);
+    const recipientCount = countRow?.cnt || 0;
+    if (recipientCount === 0) return res.status(400).json({ error: 'Chưa có người nhận nào. Vui lòng chọn người nhận trước khi gửi khảo sát.' });
+
+    // Đánh dấu thời điểm thực sự gửi và kích hoạt khảo sát để khách hàng nhận thấy
+    await db.prepare('UPDATE SurveyRecipients SET sent_at = GETDATE(), sent_by = ? WHERE survey_id = ?').run(req.user.id, req.params.id);
+    await db.prepare('UPDATE Surveys SET status = ? WHERE id = ?').run('ACTIVE', req.params.id);
+
+    res.json({
+      message: `Đã gửi khảo sát đến ${recipientCount} người nhận`,
+      recipient_count: recipientCount,
+      survey_id: survey.id,
+      old_status: survey.status,
+      new_status: 'ACTIVE'
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -517,10 +705,12 @@ app.get('/api/customer/surveys', authMiddleware, requireRole('CUSTOMER'), async 
       SELECT s.*, p.name as product_name,
       (SELECT COUNT(*) FROM Questions q WHERE q.survey_id = s.id) as question_count,
       (SELECT COUNT(*) FROM SurveyResults sr WHERE sr.survey_id = s.id AND sr.customer_id = ?) as already_submitted
-      FROM Surveys s LEFT JOIN Products p ON s.target_product_id = p.id
+      FROM Surveys s
+      JOIN SurveyRecipients r ON r.survey_id = s.id AND r.customer_id = ?
+      LEFT JOIN Products p ON s.target_product_id = p.id
       WHERE s.status = 'ACTIVE'
-      ORDER BY s.created_at DESC
-    `).all(customer.id);
+      ORDER BY r.sent_at DESC, s.created_at DESC
+    `).all(customer.id, customer.id);
     res.json(surveys);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -529,7 +719,15 @@ app.get('/api/customer/surveys', authMiddleware, requireRole('CUSTOMER'), async 
 
 app.get('/api/customer/surveys/:id', authMiddleware, requireRole('CUSTOMER'), async (req, res) => {
   try {
-    const survey = await db.prepare('SELECT s.*, p.name as product_name FROM Surveys s LEFT JOIN Products p ON s.target_product_id = p.id WHERE s.id = ?').get(req.params.id);
+    const customer = await db.prepare('SELECT id FROM Customers WHERE account_id = ?').get(req.user.id);
+    if (!customer) return res.status(400).json({ error: 'Không tìm thấy hồ sơ khách hàng' });
+    const survey = await db.prepare(`
+      SELECT s.*, p.name as product_name
+      FROM Surveys s
+      JOIN SurveyRecipients r ON r.survey_id = s.id AND r.customer_id = ?
+      LEFT JOIN Products p ON s.target_product_id = p.id
+      WHERE s.id = ? AND s.status = 'ACTIVE'
+    `).get(customer.id, req.params.id);
     if (!survey) return res.status(404).json({ error: 'Không tìm thấy khảo sát' });
     const questions = await db.prepare('SELECT * FROM Questions WHERE survey_id = ? ORDER BY order_index').all(req.params.id);
     questions.forEach(q => { if (q.options) try { q.options = JSON.parse(q.options); } catch { } });
@@ -543,6 +741,8 @@ app.post('/api/customer/surveys/:id/submit', authMiddleware, requireRole('CUSTOM
   try {
     const customer = await db.prepare('SELECT id FROM Customers WHERE account_id = ?').get(req.user.id);
     if (!customer) return res.status(400).json({ error: 'Không tìm thấy hồ sơ khách hàng' });
+    const recipient = await db.prepare('SELECT id FROM SurveyRecipients WHERE survey_id = ? AND customer_id = ?').get(req.params.id, customer.id);
+    if (!recipient) return res.status(403).json({ error: 'Khảo sát này chưa được gửi đến tài khoản của bạn' });
     const alreadyDone = await db.prepare('SELECT id FROM SurveyResults WHERE survey_id = ? AND customer_id = ?').get(req.params.id, customer.id);
     if (alreadyDone) return res.status(409).json({ error: 'Bạn đã thực hiện khảo sát này rồi' });
     const resultRow = await db.prepare('INSERT INTO SurveyResults (survey_id, customer_id) VALUES (?, ?)').run(req.params.id, customer.id);
@@ -607,7 +807,7 @@ if (!process.env.VERCEL) {
       console.log('║   🌸  HỆ THỐNG CRM - QUẢN LÝ CỬA HÀNG MỸ PHẨM  🌸    ║');
       console.log('╠══════════════════════════════════════════════════════════╣');
       console.log(`║   🚀  Server đang chạy: http://localhost:${PORT}          ║`);
-      console.log(`║   🗄️   Database: ${db.engine === 'mssql' ? 'Microsoft SQL Server (PHAZT\\SQLEXPRESS)' : 'SQLite'} ║`);
+      console.log(`║   🗄️   Database: Microsoft SQL Server Local (${db.databaseName}) ║`);
       console.log('╠══════════════════════════════════════════════════════════╣');
       console.log('║   TÀI KHOẢN DEMO:                                       ║');
       console.log('║   👑  Admin:    admin / admin123                         ║');

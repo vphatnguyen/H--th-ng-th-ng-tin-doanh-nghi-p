@@ -22,6 +22,7 @@ GO
 -- ============================================================
 IF OBJECT_ID('dbo.SurveyAnswers', 'U') IS NOT NULL DROP TABLE dbo.SurveyAnswers;
 IF OBJECT_ID('dbo.SurveyResults', 'U') IS NOT NULL DROP TABLE dbo.SurveyResults;
+IF OBJECT_ID('dbo.SurveyRecipients', 'U') IS NOT NULL DROP TABLE dbo.SurveyRecipients;
 IF OBJECT_ID('dbo.Questions', 'U') IS NOT NULL DROP TABLE dbo.Questions;
 IF OBJECT_ID('dbo.Feedbacks', 'U') IS NOT NULL DROP TABLE dbo.Feedbacks;
 IF OBJECT_ID('dbo.Surveys', 'U') IS NOT NULL DROP TABLE dbo.Surveys;
@@ -128,6 +129,20 @@ CREATE TABLE dbo.Questions (
 GO
 
 -- Bảng 7: SurveyResults - Lượt nộp bài khảo sát
+CREATE TABLE dbo.SurveyRecipients (
+    id              INT IDENTITY(1,1) PRIMARY KEY,
+    survey_id       INT NOT NULL,
+    customer_id     INT NOT NULL,
+    sent_by         INT,
+    sent_at         DATETIME2 DEFAULT GETDATE(),
+    CONSTRAINT FK_SurveyRecipients_Surveys FOREIGN KEY (survey_id) REFERENCES dbo.Surveys(id) ON DELETE CASCADE,
+    CONSTRAINT FK_SurveyRecipients_Customers FOREIGN KEY (customer_id) REFERENCES dbo.Customers(id),
+    CONSTRAINT FK_SurveyRecipients_Accounts FOREIGN KEY (sent_by) REFERENCES dbo.Accounts(id),
+    CONSTRAINT UQ_SurveyRecipients UNIQUE (survey_id, customer_id)
+);
+GO
+
+-- Bảng 8: SurveyResults - Lượt nộp bài khảo sát
 CREATE TABLE dbo.SurveyResults (
     id              INT IDENTITY(1,1) PRIMARY KEY,
     survey_id       INT NOT NULL,
@@ -139,7 +154,7 @@ CREATE TABLE dbo.SurveyResults (
 );
 GO
 
--- Bảng 8: SurveyAnswers - Câu trả lời chi tiết của khảo sát
+-- Bảng 9: SurveyAnswers - Câu trả lời chi tiết của khảo sát
 CREATE TABLE dbo.SurveyAnswers (
     id                  INT IDENTITY(1,1) PRIMARY KEY,
     survey_result_id    INT NOT NULL,
@@ -150,7 +165,7 @@ CREATE TABLE dbo.SurveyAnswers (
 );
 GO
 
--- Bảng 9: Feedbacks - Phản hồi & đánh giá sản phẩm từ khách hàng
+-- Bảng 10: Feedbacks - Phản hồi & đánh giá sản phẩm từ khách hàng
 CREATE TABLE dbo.Feedbacks (
     id              INT IDENTITY(1,1) PRIMARY KEY,
     customer_id     INT NOT NULL,
@@ -177,6 +192,8 @@ CREATE INDEX IX_Feedbacks_Rating ON dbo.Feedbacks(rating);
 CREATE INDEX IX_Customers_Age ON dbo.Customers(age);
 CREATE INDEX IX_Accounts_Role ON dbo.Accounts(role);
 CREATE INDEX IX_Surveys_Status ON dbo.Surveys(status);
+CREATE INDEX IX_SurveyRecipients_Survey ON dbo.SurveyRecipients(survey_id);
+CREATE INDEX IX_SurveyRecipients_Customer ON dbo.SurveyRecipients(customer_id);
 GO
 
 -- ============================================================
@@ -243,6 +260,16 @@ INSERT INTO dbo.Surveys (title, description, target_product_id, start_date, end_
 (N'Khảo sát thị hiếu Son môi Hè 2026', N'Thu thập ý kiến khách hàng về màu sắc, chất son và mức giá mong muốn cho dòng son Glossy Shine.', 9, '2026-06-01', '2026-08-31', 'ACTIVE', 2),
 (N'Khảo sát nhu cầu Serum chống lão hóa Peptide', N'Khảo sát trải nghiệm dưỡng da chống nhăn dành cho độ tuổi 25+ trước ngày mở bán chính thức.', 10, '2026-06-15', '2026-09-30', 'ACTIVE', 3),
 (N'Khảo sát mức độ hài lòng dịch vụ Quý 2/2026', N'Đánh giá chất lượng phục vụ, đóng gói và tư vấn làm đẹp của BeautyCRM.', NULL, '2026-04-01', '2026-06-30', 'ACTIVE', 2);
+GO
+
+-- Gửi khảo sát mẫu đến từng tài khoản khách hàng đang hoạt động
+INSERT INTO dbo.SurveyRecipients (survey_id, customer_id, sent_by)
+SELECT s.id, c.id, s.created_by
+FROM dbo.Surveys s
+CROSS JOIN dbo.Customers c
+JOIN dbo.Accounts a ON c.account_id = a.id
+WHERE s.status = 'ACTIVE'
+  AND a.status = 'ACTIVE';
 GO
 
 -- Dữ liệu câu hỏi khảo sát (Questions)

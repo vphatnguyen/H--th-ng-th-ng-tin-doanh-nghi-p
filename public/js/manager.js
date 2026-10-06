@@ -289,13 +289,15 @@ async function renderManagerSurveys() {
                 ${surveyStatusBadge(s.status)}
                 ${s.product_name ? `&nbsp;📦 ${s.product_name}` : ''}
                 &nbsp;· 📝 ${s.question_count} câu hỏi
+                &nbsp;· 📤 ${s.recipient_count || 0} người nhận
                 &nbsp;· 👥 ${s.response_count} phản hồi
                 ${s.start_date ? `&nbsp;· 📅 ${formatDate(s.start_date)} → ${formatDate(s.end_date)}` : ''}
               </div>
             </div>
             <div class="survey-actions">
               <button class="btn btn-secondary btn-sm" onclick="viewSurveyResults(${s.id},'${s.title.replace(/'/g,"\\'")}')">📊 Kết quả</button>
-              ${s.status === 'DRAFT' ? `<button class="btn btn-success btn-sm" onclick="updateSurveyStatus(${s.id},'ACTIVE')">▶️ Kích hoạt</button>` : ''}
+              <button class="btn btn-secondary btn-sm" onclick="manageSurveyRecipients(${s.id},'${s.title.replace(/'/g,"\\'")}')">📤 Người nhận</button>
+              ${s.status === 'DRAFT' ? `<button class="btn btn-primary btn-sm" onclick="sendSurvey(${s.id},'${s.title.replace(/'/g,"\\'")}')" ${s.recipient_count === 0 ? 'disabled' : ''}>📤 Gửi khảo sát</button>` : ''}
               ${s.status === 'ACTIVE' ? `<button class="btn btn-warning btn-sm" onclick="updateSurveyStatus(${s.id},'CLOSED')">⏹️ Đóng</button>` : ''}
               ${s.status === 'CLOSED' ? `<span class="badge badge-closed">Đã đóng</span>` : ''}
             </div>
@@ -309,7 +311,14 @@ async function renderManagerSurveys() {
 
 async function openCreateSurveyModal() {
   const products = await api('GET', '/api/products?launch_status=UPCOMING').catch(() => []);
+  const customers = await api('GET', '/api/manager/customers?status=ACTIVE').catch(() => []);
   const prodOptions = products.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+  const customerChecks = customers.map(c => `
+    <label class="survey-option-label" style="font-size:12px">
+      <input type="checkbox" name="sv-recipient" value="${c.customer_id}" checked style="accent-color:var(--rose-500)">
+      <span>${c.full_name} <span style="color:var(--text-muted)">@${c.username}</span></span>
+    </label>
+  `).join('');
 
   showModal('➕ Tạo chiến dịch khảo sát mới', `
     <div class="form-group"><label>Tiêu đề khảo sát *</label><input id="sv-title" placeholder="VD: Khảo sát thị hiếu Son môi Hè 2026"></div>
@@ -321,6 +330,17 @@ async function openCreateSurveyModal() {
       <div class="form-group"><label>Ngày kết thúc</label><input id="sv-end" type="date"></div>
     </div>
     <div class="form-group"><label>Mô tả</label><textarea id="sv-desc" placeholder="Mô tả mục tiêu chiến dịch khảo sát..."></textarea></div>
+
+    <div class="form-group">
+      <label>Gửi đến tài khoản khách hàng</label>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-size:12px;color:var(--text-muted)">Mặc định chọn toàn bộ khách hàng đang hoạt động.</span>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="toggleAllSurveyRecipients()">Chọn/Bỏ tất cả</button>
+      </div>
+      <div style="max-height:180px;overflow:auto;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        ${customerChecks || '<p style="font-size:12px;color:var(--text-muted)">Chưa có khách hàng hoạt động.</p>'}
+      </div>
+    </div>
 
     <div style="border-top:1px solid var(--border);margin:8px 0;padding-top:16px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
@@ -377,6 +397,12 @@ function toggleOptionsField(n) {
   if (wrap) wrap.style.display = (type === 'RATING' || type === 'TEXT') ? 'none' : 'block';
 }
 
+function toggleAllSurveyRecipients() {
+  const boxes = [...document.querySelectorAll('input[name="sv-recipient"]')];
+  const shouldCheck = boxes.some(b => !b.checked);
+  boxes.forEach(b => { b.checked = shouldCheck; });
+}
+
 async function createSurvey(status) {
   const questions = [];
   document.querySelectorAll('[id^="q-block-"]').forEach((block) => {
@@ -391,6 +417,9 @@ async function createSurvey(status) {
   });
 
   try {
+    const recipient_customer_ids = [...document.querySelectorAll('input[name="sv-recipient"]:checked')]
+      .map(el => Number(el.value))
+      .filter(Boolean);
     const result = await api('POST', '/api/manager/surveys', {
       title: document.getElementById('sv-title').value.trim(),
       description: document.getElementById('sv-desc').value.trim(),
@@ -398,10 +427,11 @@ async function createSurvey(status) {
       start_date: document.getElementById('sv-start').value || null,
       end_date: document.getElementById('sv-end').value || null,
       questions,
+      recipient_customer_ids,
     });
 
     if (status === 'ACTIVE') {
-      await api('PUT', `/api/manager/surveys/${result.id}/status`, { status: 'ACTIVE' });
+      await api('POST', `/api/manager/surveys/${result.id}/send`);
     }
     toast('Tạo chiến dịch khảo sát thành công!', 'success');
     questionCount = 0;
@@ -414,6 +444,67 @@ async function updateSurveyStatus(id, status) {
   try {
     await api('PUT', `/api/manager/surveys/${id}/status`, { status });
     toast(`Đã cập nhật trạng thái khảo sát`, 'success');
+    renderManagerSurveys();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function sendSurvey(id, title) {
+  if (!confirm(`Xác nhận GỬI khảo sát "${title}" đến người nhận?\n\nHành động này sẽ kích hoạt khảo sát và cập nhật thời gian gửi cho toàn bộ người nhận đã chọn.`)) return;
+  try {
+    const result = await api('POST', `/api/manager/surveys/${id}/send`);
+    toast(`✅ ${result.message}`, 'success');
+    renderManagerSurveys();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function manageSurveyRecipients(id, title) {
+  showModal(`📤 Người nhận: ${title}`, `<div class="loading-spinner"><div class="spinner"></div></div>`, true);
+  try {
+    const rows = await api('GET', `/api/manager/surveys/${id}/recipients`);
+    const body = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-size:13px;color:var(--text-secondary)">
+          Đã gửi: <strong style="color:var(--rose-300)">${rows.filter(r => Number(r.is_recipient) === 1).length}</strong> /
+          ${rows.length} khách hàng
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="toggleModalRecipients()">Chọn/Bỏ tất cả</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;max-height:360px;overflow:auto">
+        ${rows.map(r => `
+          <label class="survey-option-label" style="font-size:12px;opacity:${r.status === 'LOCKED' ? 0.55 : 1}">
+            <input type="checkbox" name="modal-recipient" value="${r.customer_id}" ${Number(r.is_recipient) === 1 ? 'checked' : ''} ${Number(r.already_submitted) === 1 ? 'disabled' : ''} style="accent-color:var(--rose-500)">
+            <span>
+              ${r.full_name} <span style="color:var(--text-muted)">@${r.username}</span>
+              ${Number(r.already_submitted) === 1 ? '<span class="badge badge-active" style="margin-left:6px">Đã làm</span>' : ''}
+            </span>
+          </label>
+        `).join('')}
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal()">Hủy</button>
+        <button class="btn btn-primary" onclick="saveSurveyRecipients(${id})">💾 Lưu người nhận</button>
+      </div>
+    `;
+    document.getElementById('modal-body').innerHTML = body;
+  } catch (e) {
+    document.getElementById('modal-body').innerHTML = `<p class="error-msg">${e.message}</p>`;
+  }
+}
+
+function toggleModalRecipients() {
+  const boxes = [...document.querySelectorAll('input[name="modal-recipient"]:not(:disabled)')];
+  const shouldCheck = boxes.some(b => !b.checked);
+  boxes.forEach(b => { b.checked = shouldCheck; });
+}
+
+async function saveSurveyRecipients(id) {
+  try {
+    const customer_ids = [...document.querySelectorAll('input[name="modal-recipient"]:checked')]
+      .map(el => Number(el.value))
+      .filter(Boolean);
+    const result = await api('PUT', `/api/manager/surveys/${id}/recipients`, { customer_ids });
+    toast(`${result.message} (${result.recipient_count} người nhận)`, 'success');
+    closeModal();
     renderManagerSurveys();
   } catch (e) { toast(e.message, 'error'); }
 }

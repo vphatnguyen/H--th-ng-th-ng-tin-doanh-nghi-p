@@ -1,15 +1,8 @@
 require('dotenv').config();
-const path = require('path');
-const fs = require('fs');
-
-const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
-const DB_TYPE = (process.env.DB_TYPE || (isServerless ? 'sqlite' : 'mssql')).toLowerCase();
 
 let sqlServerPool = null;
-let sqliteDb = null;
-let activeEngine = 'none'; // 'mssql' or 'sqlite'
+let activeEngine = 'none';
 
-// ========== MSSQL IMPLEMENTATION ==========
 async function initSqlServer() {
   const sql = require('mssql/msnodesqlv8');
   const server = process.env.DB_SERVER || 'localhost\\SQLEXPRESS';
@@ -28,7 +21,6 @@ async function initSqlServer() {
       }
     };
   } else {
-    // Windows Authentication qua ODBC
     const connStr = `Driver={ODBC Driver 18 for SQL Server};Server=${server};Database=${database};Trusted_Connection=yes;TrustServerCertificate=yes;`;
     connConfig = { connectionString: connStr };
   }
@@ -50,75 +42,22 @@ function formatSqlForMssql(query, params) {
   return { formattedSql, paramMap };
 }
 
-// ========== SQLITE FALLBACK IMPLEMENTATION ==========
-const DB_PATH = isServerless
-  ? path.join(require('os').tmpdir(), 'cosmetics_crm.db')
-  : path.join(__dirname, 'cosmetics_crm.db');
-
-async function initSqlite() {
-  const initSqlJs = require('sql.js');
-  let wasmBinary = null;
-  const localWasm = path.join(__dirname, 'sql-wasm.wasm');
-  const nodeModulesWasm = path.join(__dirname, '..', 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm');
-
-  if (fs.existsSync(localWasm)) {
-    wasmBinary = fs.readFileSync(localWasm);
-  } else if (fs.existsSync(nodeModulesWasm)) {
-    wasmBinary = fs.readFileSync(nodeModulesWasm);
-  }
-
-  const SQL = await initSqlJs(wasmBinary ? { wasmBinary } : {});
-  let dbInstance = null;
-
-  if (fs.existsSync(DB_PATH)) {
-    try {
-      const buffer = fs.readFileSync(DB_PATH);
-      dbInstance = new SQL.Database(buffer);
-    } catch {
-      dbInstance = new SQL.Database();
-    }
-  } else {
-    dbInstance = new SQL.Database();
-  }
-  return dbInstance;
-}
-
-function saveSqliteDb() {
-  if (!sqliteDb) return;
-  try {
-    const data = sqliteDb.export();
-    fs.writeFileSync(DB_PATH, Buffer.from(data));
-  } catch (err) {
-    console.warn('Cảnh báo khi lưu SQLite:', err.message);
-  }
-}
-
-// ========== UNIFIED DATABASE ADAPTER ==========
 const db = {
   get engine() {
     return activeEngine;
   },
 
+  get databaseName() {
+    return process.env.DB_DATABASE || 'CosmeticsCRM_DB';
+  },
+
   async init() {
     if (activeEngine !== 'none') return db;
 
-    if (DB_TYPE === 'mssql' && !isServerless) {
-      try {
-        console.log(`Đang kết nối Microsoft SQL Server (${process.env.DB_SERVER || 'PHAZT\\SQLEXPRESS'})...`);
-        sqlServerPool = await initSqlServer();
-        activeEngine = 'mssql';
-        console.log('✅ Đã kết nối thành công tới Microsoft SQL Server: CosmeticsCRM_DB');
-        return db;
-      } catch (err) {
-        console.warn('⚠️ Không thể kết nối SQL Server, chuyển sang SQLite dự phòng:', err.message);
-      }
-    }
-
-    // Fallback SQLite
-    console.log('Đang khởi tạo SQLite Database...');
-    sqliteDb = await initSqlite();
-    activeEngine = 'sqlite';
-    console.log('✅ Đã kết nối SQLite Database');
+    console.log(`Dang ket noi Microsoft SQL Server (${process.env.DB_SERVER || 'localhost\\SQLEXPRESS'})...`);
+    sqlServerPool = await initSqlServer();
+    activeEngine = 'mssql';
+    console.log(`Da ket noi thanh cong toi Microsoft SQL Server: ${db.databaseName}`);
     return db;
   },
 
@@ -126,91 +65,47 @@ const db = {
     return {
       async get(...args) {
         const params = args.flat();
-        if (activeEngine === 'mssql') {
-          const { formattedSql, paramMap } = formatSqlForMssql(sqlQuery, params);
-          const req = sqlServerPool.request();
-          for (const [key, val] of Object.entries(paramMap)) {
-            req.input(key, val === undefined ? null : val);
-          }
-          const res = await req.query(formattedSql);
-          return res.recordset && res.recordset.length > 0 ? res.recordset[0] : undefined;
-        } else {
-          const stmt = sqliteDb.prepare(sqlQuery);
-          try {
-            if (params.length > 0) stmt.bind(params);
-            if (stmt.step()) return stmt.getAsObject();
-            return undefined;
-          } finally {
-            stmt.free();
-          }
+        const { formattedSql, paramMap } = formatSqlForMssql(sqlQuery, params);
+        const req = sqlServerPool.request();
+        for (const [key, val] of Object.entries(paramMap)) {
+          req.input(key, val === undefined ? null : val);
         }
+        const res = await req.query(formattedSql);
+        return res.recordset && res.recordset.length > 0 ? res.recordset[0] : undefined;
       },
 
       async all(...args) {
         const params = args.flat();
-        if (activeEngine === 'mssql') {
-          const { formattedSql, paramMap } = formatSqlForMssql(sqlQuery, params);
-          const req = sqlServerPool.request();
-          for (const [key, val] of Object.entries(paramMap)) {
-            req.input(key, val === undefined ? null : val);
-          }
-          const res = await req.query(formattedSql);
-          return res.recordset || [];
-        } else {
-          const stmt = sqliteDb.prepare(sqlQuery);
-          try {
-            if (params.length > 0) stmt.bind(params);
-            const rows = [];
-            while (stmt.step()) {
-              rows.push(stmt.getAsObject());
-            }
-            return rows;
-          } finally {
-            stmt.free();
-          }
+        const { formattedSql, paramMap } = formatSqlForMssql(sqlQuery, params);
+        const req = sqlServerPool.request();
+        for (const [key, val] of Object.entries(paramMap)) {
+          req.input(key, val === undefined ? null : val);
         }
+        const res = await req.query(formattedSql);
+        return res.recordset || [];
       },
 
       async run(...args) {
         const params = args.flat();
-        if (activeEngine === 'mssql') {
-          const isInsert = /^\s*INSERT\s+INTO/i.test(sqlQuery);
-          let wrappedSql = sqlQuery;
-          if (isInsert && !/SELECT\s+.*SCOPE_IDENTITY/i.test(sqlQuery)) {
-            wrappedSql += '; SELECT CAST(SCOPE_IDENTITY() AS INT) AS lastInsertRowid, @@ROWCOUNT AS changes;';
-          } else if (!/SELECT\s+.*@@ROWCOUNT/i.test(sqlQuery)) {
-            wrappedSql += '; SELECT CAST(0 AS INT) AS lastInsertRowid, @@ROWCOUNT AS changes;';
-          }
-
-          const { formattedSql, paramMap } = formatSqlForMssql(wrappedSql, params);
-          const req = sqlServerPool.request();
-          for (const [key, val] of Object.entries(paramMap)) {
-            req.input(key, val === undefined ? null : val);
-          }
-          const res = await req.query(formattedSql);
-          const info = res.recordset && res.recordset.length > 0 ? res.recordset[0] : {};
-          return {
-            lastInsertRowid: info.lastInsertRowid || 0,
-            changes: info.changes || res.rowsAffected?.[0] || 0
-          };
-        } else {
-          const stmt = sqliteDb.prepare(sqlQuery);
-          try {
-            if (params.length > 0) stmt.bind(params);
-            stmt.step();
-          } finally {
-            stmt.free();
-          }
-          const info = sqliteDb.exec("SELECT last_insert_rowid() AS id, changes() AS chg");
-          let lastInsertRowid = 0;
-          let changes = 0;
-          if (info.length > 0 && info[0].values.length > 0) {
-            lastInsertRowid = info[0].values[0][0];
-            changes = info[0].values[0][1];
-          }
-          saveSqliteDb();
-          return { lastInsertRowid, changes };
+        const isInsert = /^\s*INSERT\s+INTO/i.test(sqlQuery);
+        let wrappedSql = sqlQuery;
+        if (isInsert && !/SCOPE_IDENTITY/i.test(sqlQuery)) {
+          wrappedSql += '; SELECT CAST(SCOPE_IDENTITY() AS INT) AS lastInsertRowid, @@ROWCOUNT AS changes;';
+        } else if (!/@@ROWCOUNT/i.test(sqlQuery)) {
+          wrappedSql += '; SELECT CAST(0 AS INT) AS lastInsertRowid, @@ROWCOUNT AS changes;';
         }
+
+        const { formattedSql, paramMap } = formatSqlForMssql(wrappedSql, params);
+        const req = sqlServerPool.request();
+        for (const [key, val] of Object.entries(paramMap)) {
+          req.input(key, val === undefined ? null : val);
+        }
+        const res = await req.query(formattedSql);
+        const info = res.recordset && res.recordset.length > 0 ? res.recordset[0] : {};
+        return {
+          lastInsertRowid: info.lastInsertRowid || 0,
+          changes: info.changes || res.rowsAffected?.[0] || 0
+        };
       }
     };
   },
@@ -219,11 +114,6 @@ const db = {
     if (sqlServerPool) {
       await sqlServerPool.close();
       sqlServerPool = null;
-    }
-    if (sqliteDb) {
-      saveSqliteDb();
-      sqliteDb.close();
-      sqliteDb = null;
     }
     activeEngine = 'none';
   }

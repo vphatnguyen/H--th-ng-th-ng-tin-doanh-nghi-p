@@ -16,3 +16,4 @@ GIẢNG VIÊN HƯỚNG DẪN:
 - Giảng viên: [Tên Giảng Viên]
 - Lớp / Khóa: [Tên Lớp / Học kỳ]
 ================================================================================
+viết rõ phần thiết kế CSDL, sơ đồ bảng, quy trình backup/restore

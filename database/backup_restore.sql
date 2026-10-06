@@ -30,7 +30,7 @@ WITH
     INIT,                       -- Khởi tạo media set mới
     NAME = N'Full Backup - CosmeticsCRM - 13/09/2026',
     DESCRIPTION = N'Full Backup định kỳ hàng tuần của CSDL Hệ thống CRM Mỹ phẩm',
-    COMPRESSION,                -- Nén file backup để tiết kiệm dung lượng
+    -- COMPRESSION chỉ hỗ trợ SQL Server Standard/Enterprise; bỏ qua nếu dùng Express
     STATS = 10;                 -- Hiển thị tiến trình mỗi 10%
 GO
 
@@ -78,7 +78,7 @@ WITH
     INIT,
     NAME = N'Differential Backup - CosmeticsCRM - 13/09/2026',
     DESCRIPTION = N'Differential Backup hàng ngày - chứa 3 phản hồi mới phát sinh',
-    COMPRESSION,
+    -- COMPRESSION chỉ hỗ trợ SQL Server Standard/Enterprise; bỏ qua nếu dùng Express
     STATS = 10;
 GO
 
