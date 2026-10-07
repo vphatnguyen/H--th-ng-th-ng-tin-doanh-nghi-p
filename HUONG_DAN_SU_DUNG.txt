@@ -86,7 +86,9 @@ IV. HƯỚNG DẪN SỬ DỤNG THEO VÀI TRÒ (PHÂN RÃ CHỨC NĂNG)
 
 2. Giao diện MANAGER (Quản lý Cửa hàng & CRM):
    - Quản lý Khách hàng: Thêm khách hàng mới, khóa/mở khóa tài khoản khách hàng.
-   - Thống kê & Báo cáo CRM: Xem biểu đồ/báo cáo phân tích tỷ lệ độ tuổi khách hàng, sở thích làm đẹp (chăm sóc da, trang điểm, chống lão hóa...), loại da.
+   - Dashboard CRM: Xem tổng khách hàng, tài khoản bị khóa, điểm đánh giá, phản hồi và tỷ lệ tham gia khảo sát.
+   - Phân tích CRM: Lọc theo khoảng thời gian, phân tích khách hàng theo độ tuổi/giới tính/loại da, sở thích theo nhóm khách hàng, đánh giá theo sản phẩm và hiệu quả từng chiến dịch khảo sát.
+   - Xuất báo cáo: Tải dữ liệu khách hàng, phản hồi và khảo sát dưới dạng CSV từ màn hình Analytics.
    - Khảo sát thị hiếu sản phẩm mới:
      * Tạo bài khảo sát mới kèm các câu hỏi (Trắc nghiệm, Đánh giá sao, Ý kiến).
      * Gửi chiến dịch khảo sát tới danh sách khách hàng.

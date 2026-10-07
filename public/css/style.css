@@ -385,6 +385,23 @@ input[type="checkbox"] {
   display: inline-block;
 }
 
+.preference-chip {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: transparent;
+  font-size: 12px !important;
+}
+
+.preference-chip:has(input:checked) {
+  border-color: var(--rose-400);
+  background: rgba(244, 63, 94, 0.12);
+}
+
 .survey-option-label {
   display: flex !important;
   align-items: center !important;
@@ -1114,26 +1131,6 @@ tbody tr:last-child td {
   border: 1px solid rgba(16, 185, 129, 0.22);
 }
 
-.badge-bronze {
-  background: rgba(180, 83, 9, 0.2);
-  color: #d97706;
-}
-
-.badge-silver {
-  background: rgba(100, 116, 139, 0.2);
-  color: #94a3b8;
-}
-
-.badge-gold {
-  background: rgba(245, 158, 11, 0.2);
-  color: #fbbf24;
-}
-
-.badge-platinum {
-  background: rgba(168, 85, 247, 0.2);
-  color: #c084fc;
-}
-
 /* Stars */
 .stars {
   color: #fbbf24;
@@ -1651,23 +1648,6 @@ tbody tr:last-child td {
 
 .db-console-line-error {
   color: #f87171;
-}
-
-/* Membership tier colors */
-.tier-BRONZE {
-  color: #d97706;
-}
-
-.tier-SILVER {
-  color: #94a3b8;
-}
-
-.tier-GOLD {
-  color: #fbbf24;
-}
-
-.tier-PLATINUM {
-  color: #c084fc;
 }
 
 /* ============================================================

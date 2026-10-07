@@ -23,7 +23,7 @@ async function renderCustomerHome() {
         <div style="position:relative">
           <h2 style="font-size:22px;font-weight:800;margin-bottom:6px">Chào mừng, ${state.user.full_name}! 👋</h2>
           <p style="color:var(--text-secondary);font-size:14px">
-            ${customer ? `Hạng thành viên: ${membershipBadge(customer.membership_tier)}` : 'Hãy cập nhật hồ sơ làm đẹp của bạn!'}
+            Hãy cập nhật hồ sơ làm đẹp của bạn!
             ${pendingSurveys.length > 0 ? `&nbsp;· <span style="color:var(--rose-300);font-weight:600">📋 ${pendingSurveys.length} khảo sát đang chờ bạn!</span>` : ''}
           </p>
         </div>
@@ -464,7 +464,7 @@ async function renderCustomerProfile() {
   try {
     const { account, customer } = await api('GET', '/api/customer/profile');
     const skinOptions = ['Da dầu','Da khô','Da hỗn hợp','Da nhạy cảm','Da thường'];
-    const beautyPrefsOptions = ['Trang điểm','Chăm sóc da','Chống lão hóa','Trị mụn','Dưỡng ẩm','Organic','Skincare cơ bản'];
+    const beautyPrefsOptions = BEAUTY_PREFERENCE_OPTIONS;
 
     const currentPrefs = (customer?.beauty_preferences || '').split(',').map(p => p.trim()).filter(Boolean);
 
@@ -480,7 +480,6 @@ async function renderCustomerProfile() {
           <div style="margin-top:10px;display:flex;justify-content:center;gap:8px">
             ${roleBadge(state.user.role)}
             ${statusBadge(account.status)}
-            ${customer ? membershipBadge(customer.membership_tier) : ''}
           </div>
         </div>
 
@@ -530,7 +529,6 @@ async function renderCustomerProfile() {
           <div class="card-title">🔒 Thông tin tài khoản</div>
           <table style="width:100%">
             <tr><td style="padding:8px 0;color:#ffffff;font-size:13px;width:40%">Tên đăng nhập</td><td style="font-weight:600">@${account.username}</td></tr>
-            <tr><td style="padding:8px 0;color:#ffffff;font-size:13px">Hạng thành viên</td><td>${customer ? membershipBadge(customer.membership_tier) : '—'}</td></tr>
             <tr><td style="padding:8px 0;color:#ffffff;font-size:13px">Ngày đăng ký</td><td>${formatDate(account.created_at)}</td></tr>
           </table>
         </div>

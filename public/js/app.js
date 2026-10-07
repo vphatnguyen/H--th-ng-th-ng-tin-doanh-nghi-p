@@ -3,6 +3,7 @@
    ============================================================ */
 
 let state = { token: null, user: null, customer: null, currentPage: null };
+const BEAUTY_PREFERENCE_OPTIONS = ['Trang điểm', 'Chăm sóc da', 'Chống lão hóa', 'Trị mụn', 'Dưỡng ẩm', 'Organic', 'Skincare cơ bản'];
 
 // ========== UTILITIES ==========
 function api(method, url, body) {
@@ -80,12 +81,6 @@ function surveyStatusBadge(s) {
   const map = { DRAFT: 'badge-draft', ACTIVE: 'badge-active', CLOSED: 'badge-closed' };
   const label = { DRAFT: '📝 Nháp', ACTIVE: '🟢 Đang mở', CLOSED: '🔴 Đã đóng' };
   return `<span class="badge ${map[s] || ''}">${label[s] || s}</span>`;
-}
-
-function membershipBadge(tier) {
-  if (!tier) return '';
-  const label = { BRONZE: '🥉 Bronze', SILVER: '🥈 Silver', GOLD: '🥇 Gold', PLATINUM: '💎 Platinum' };
-  return `<span class="badge badge-${tier.toLowerCase()}">${label[tier] || tier}</span>`;
 }
 
 function getCategoryIcon(cat) {
@@ -192,6 +187,7 @@ function buildSidebar() {
     MANAGER: [
       { label: 'PHÂN HỆ QUẢN LÝ CRM', type: 'section' },
       { id: 'manager-dashboard', icon: '📊', label: 'Dashboard & Báo cáo' },
+      { id: 'manager-analytics', icon: '📈', label: 'Phân tích CRM' },
       { id: 'manager-customers', icon: '👩', label: 'Quản lý Khách hàng' },
       { id: 'manager-surveys', icon: '📋', label: 'Chiến dịch Khảo sát' },
       { id: 'manager-feedbacks', icon: '💬', label: 'Phản hồi & Đánh giá' },
@@ -243,6 +239,7 @@ function navigate(pageId) {
     'admin-suppliers': renderAdminSuppliers,
     'admin-database': renderAdminDatabase,
     'manager-dashboard': renderManagerDashboard,
+    'manager-analytics': renderManagerAnalytics,
     'manager-customers': renderManagerCustomers,
     'manager-surveys': renderManagerSurveys,
     'manager-feedbacks': renderManagerFeedbacks,
@@ -298,6 +295,7 @@ document.addEventListener('DOMContentLoaded', () => {
         age: Number(document.getElementById('reg-age').value) || null,
         gender: document.getElementById('reg-gender').value || null,
         skin_type: document.getElementById('reg-skin').value || null,
+        beauty_preferences: [...document.querySelectorAll('input[name="reg-preferences"]:checked')].map(input => input.value).join(',') || null,
       });
       sucEl.textContent = '🎉 Đăng ký thành công! Chuyển đến trang đăng nhập...';
       document.getElementById('register-form').reset();

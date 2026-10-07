@@ -60,8 +60,6 @@ CREATE TABLE dbo.Customers (
     gender          NVARCHAR(10) CONSTRAINT CK_Customers_gender CHECK (gender IN (N'Nu',N'Nam',N'Khac')),
     skin_type       NVARCHAR(50),
     beauty_preferences NVARCHAR(255),
-    membership_tier NVARCHAR(10) DEFAULT 'BRONZE'
-                    CONSTRAINT CK_Customers_tier CHECK (membership_tier IN ('BRONZE','SILVER','GOLD','PLATINUM')),
     created_at      DATETIME2 DEFAULT GETDATE(),
     CONSTRAINT FK_Customers_Accounts FOREIGN KEY (account_id) REFERENCES dbo.Accounts(id) ON DELETE CASCADE
 );
@@ -218,17 +216,17 @@ INSERT INTO dbo.Accounts (username, password, full_name, email, phone, role, sta
 GO
 
 -- Dữ liệu khách hàng (hồ sơ làm đẹp)
-INSERT INTO dbo.Customers (account_id, age, gender, skin_type, beauty_preferences, membership_tier) VALUES
-(4,  24, N'Nu', N'Da dầu',       N'Trang điểm,Chống lão hóa',       'SILVER'),
-(5,  19, N'Nu', N'Da khô',       N'Chăm sóc da,Dưỡng ẩm',           'BRONZE'),
-(6,  31, N'Nu', N'Da hỗn hợp',   N'Chống lão hóa,Trị mụn',          'GOLD'),
-(7,  28, N'Nu', N'Da nhạy cảm',  N'Chăm sóc da,Organic',            'SILVER'),
-(8,  22, N'Nu', N'Da thường',    N'Trang điểm,Chăm sóc da',         'BRONZE'),
-(9,  35, N'Nu', N'Da dầu',       N'Trị mụn,Chăm sóc da',            'GOLD'),
-(10, 42, N'Nu', N'Da khô',       N'Chống lão hóa,Dưỡng da',         'PLATINUM'),
-(11, 17, N'Nu', N'Da thường',    N'Trang điểm,Skincare cơ bản',     'BRONZE'),
-(12, 38, N'Nam', N'Da dầu',      N'Chăm sóc da,Dưỡng ẩm',          'SILVER'),
-(13, 26, N'Nu', N'Da hỗn hợp',   N'Trang điểm,Chống lão hóa,Trị mụn', 'GOLD');
+INSERT INTO dbo.Customers (account_id, age, gender, skin_type, beauty_preferences) VALUES
+(4,  24, N'Nu', N'Da dầu',       N'Trang điểm,Chống lão hóa'),
+(5,  19, N'Nu', N'Da khô',       N'Chăm sóc da,Dưỡng ẩm'),
+(6,  31, N'Nu', N'Da hỗn hợp',   N'Chống lão hóa,Trị mụn'),
+(7,  28, N'Nu', N'Da nhạy cảm',  N'Chăm sóc da,Organic'),
+(8,  22, N'Nu', N'Da thường',    N'Trang điểm,Chăm sóc da'),
+(9,  35, N'Nu', N'Da dầu',       N'Trị mụn,Chăm sóc da'),
+(10, 42, N'Nu', N'Da khô',        N'Chống lão hóa,Dưỡng ẩm'),
+(11, 17, N'Nu', N'Da thường',    N'Trang điểm,Skincare cơ bản'),
+(12, 38, N'Nam', N'Da dầu',      N'Chăm sóc da,Dưỡng ẩm'),
+(13, 26, N'Nu', N'Da hỗn hợp',   N'Trang điểm,Chống lão hóa,Trị mụn');
 GO
 
 -- Dữ liệu nhà cung cấp

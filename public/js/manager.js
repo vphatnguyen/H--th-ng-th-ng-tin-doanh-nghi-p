@@ -3,6 +3,7 @@
    ============================================================ */
 
 let chartInstances = {};
+let analyticsFilterState = { from: '', to: '' };
 
 function destroyChart(id) {
   if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
@@ -13,20 +14,16 @@ async function renderManagerDashboard() {
   setPageHeader('📊 Dashboard CRM', 'Tổng quan & phân tích thị hiếu khách hàng làm đẹp');
   showLoading();
   try {
-    const data = await api('GET', '/api/manager/analytics');
-    const { ageGroups, skinTypes, beautyPrefs, stats } = data;
+    const data = await api('GET', `/api/manager/analytics${analyticsQuery()}`);
+    const { ageGroups, skinTypes, genderGroups, beautyPrefs, newCustomersByMonth, feedbackByProduct, stats } = data;
 
     const html = `
+      ${analyticsFilterHtml()}
       <div class="stats-grid">
         <div class="stat-card">
           <div class="stat-icon">👩</div>
           <div class="stat-value">${stats.totalCustomers}</div>
           <div class="stat-label">Tổng khách hàng</div>
-        </div>
-        <div class="stat-card emerald">
-          <div class="stat-icon">✅</div>
-          <div class="stat-value">${stats.activeCustomers}</div>
-          <div class="stat-label">Đang hoạt động</div>
         </div>
         <div class="stat-card purple">
           <div class="stat-icon">🔒</div>
@@ -40,8 +37,8 @@ async function renderManagerDashboard() {
         </div>
         <div class="stat-card">
           <div class="stat-icon">💬</div>
-          <div class="stat-value">${stats.totalFeedbacks}</div>
-          <div class="stat-label">Tổng phản hồi</div>
+          <div class="stat-value">${stats.totalFeedbacks} <small style="font-size:12px;color:var(--text-muted)">(${stats.feedbackReplyRate}%)</small></div>
+          <div class="stat-label">Phản hồi (đã trả lời)</div>
         </div>
         <div class="stat-card emerald">
           <div class="stat-icon">📋</div>
@@ -50,8 +47,8 @@ async function renderManagerDashboard() {
         </div>
         <div class="stat-card purple">
           <div class="stat-icon">📝</div>
-          <div class="stat-value">${stats.totalSurveyResponses}</div>
-          <div class="stat-label">Lượt tham gia KS</div>
+          <div class="stat-value">${stats.totalSurveyResponses} <small style="font-size:12px;color:var(--text-muted)">(${stats.surveyResponseRate}%)</small></div>
+          <div class="stat-label">Lượt tham gia khảo sát</div>
         </div>
       </div>
 
@@ -68,6 +65,22 @@ async function renderManagerDashboard() {
           <div class="chart-title">💅 Sở thích Làm đẹp</div>
           <div class="chart-container"><canvas id="chart-prefs"></canvas></div>
         </div>
+        <div class="chart-card">
+          <div class="chart-title">👤 Giới tính</div>
+          <div class="chart-container"><canvas id="chart-gender"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">📅 Khách hàng mới theo tháng</div>
+          <div class="chart-container"><canvas id="chart-new-customers"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">⭐ Đánh giá theo sản phẩm</div>
+          <div class="chart-container"><canvas id="chart-products"></canvas></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:20px">
+        <div class="card-title">💡 Gợi ý nhanh</div>
+        <p style="color:var(--text-secondary);font-size:13px">Sản phẩm được đánh giá cao nhất: <strong>${feedbackByProduct[0]?.product_name || 'Chưa có dữ liệu'}</strong>. Hãy xem trang Phân tích CRM để phân tích sở thích theo độ tuổi và loại da.</p>
       </div>
     `;
     setPageContent(html);
@@ -78,7 +91,7 @@ async function renderManagerDashboard() {
       const purpleGrad = ['#a855f7','#7c3aed','#c084fc','#d8b4fe','#ede9fe'];
       const gemPalette = ['#f43f5e','#a855f7','#10b981','#fbbf24','#60a5fa','#fb923c','#34d399','#e879f9'];
 
-      destroyChart('age'); destroyChart('skin'); destroyChart('prefs');
+      destroyChart('age'); destroyChart('skin'); destroyChart('prefs'); destroyChart('gender'); destroyChart('new-customers'); destroyChart('products');
 
       chartInstances['age'] = new Chart(document.getElementById('chart-age'), {
         type: 'doughnut',
@@ -96,11 +109,11 @@ async function renderManagerDashboard() {
           datasets: [{ data: skinTypes.map(s => s.count), backgroundColor: roseGrad, borderRadius: 8, borderSkipped: false }]
         },
         options: {
-          responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+          responsive: true, maintainAspectRatio: false,
           plugins: { legend: { display: false } },
           scales: {
             x: { grid: { color: 'rgba(203,213,225,0.05)' }, ticks: { color: '#94a3b8', font: { size: 11 } } },
-            y: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 11 } } }
+            y: { beginAtZero: true, grid: { color: 'rgba(203,213,225,0.05)' }, ticks: { color: '#94a3b8', font: { size: 11 }, precision: 0, stepSize: 1 } }
           }
         }
       });
@@ -113,7 +126,176 @@ async function renderManagerDashboard() {
         },
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: '#94a3b8', font: { size: 10 }, boxWidth: 12 } } }, scales: { r: { grid: { color: 'rgba(203,213,225,0.08)' }, ticks: { display: false } } } }
       });
+      chartInstances['gender'] = new Chart(document.getElementById('chart-gender'), {
+        type: 'doughnut',
+        data: { labels: genderGroups.map(g => g.gender === 'Nu' ? 'Nữ' : g.gender === 'Nam' ? 'Nam' : 'Khác'), datasets: [{ data: genderGroups.map(g => g.count), backgroundColor: ['#f43f5e','#60a5fa','#a855f7'] }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: '#94a3b8' } } } }
+      });
+      const monthlySeries = completeMonthlySeries(newCustomersByMonth);
+      const monthlyYears = [...new Set(monthlySeries.map(item => item.month.slice(0, 4)))];
+      chartInstances['new-customers'] = new Chart(document.getElementById('chart-new-customers'), {
+        type: 'line',
+        data: {
+          labels: monthlySeries.map(x => `T${x.month.slice(5, 7)}`),
+          datasets: [{
+            label: 'Khách hàng mới',
+            data: monthlySeries.map(x => x.count),
+            borderColor: '#10b981',
+            backgroundColor: 'rgba(16,185,129,0.15)',
+            pointBackgroundColor: '#10b981',
+            pointBorderColor: '#ecfdf5',
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            borderWidth: 3,
+            fill: true,
+            tension: 0.3,
+            spanGaps: true
+          }]
+        },
+        options: {
+          ...chartOptions(),
+          plugins: {
+            ...chartOptions().plugins,
+            title: {
+              display: monthlyYears.length > 0,
+              text: `Năm: ${monthlyYears.join(', ')}`,
+              color: '#94a3b8',
+              font: { size: 13, weight: '600' },
+              padding: { bottom: 12 }
+            }
+          },
+          scales: {
+            x: { grid: { color: 'rgba(203,213,225,0.05)' }, ticks: { color: '#94a3b8' } },
+            y: { beginAtZero: true, grid: { color: 'rgba(203,213,225,0.05)' }, ticks: { color: '#94a3b8', precision: 0 } }
+          }
+        }
+      });
+      chartInstances['products'] = new Chart(document.getElementById('chart-products'), {
+        type: 'bar',
+        data: { labels: feedbackByProduct.slice(0, 8).map(x => x.product_name), datasets: [{ label: 'Điểm TB', data: feedbackByProduct.slice(0, 8).map(x => x.average), backgroundColor: '#fbbf24', borderRadius: 8 }] },
+        options: { ...chartOptions(), indexAxis: 'y', scales: { x: { min: 0, max: 5, ticks: { color: '#94a3b8' } }, y: { ticks: { color: '#94a3b8' } } } }
+      });
     }, 50);
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+function analyticsQuery() {
+  const from = document.getElementById('analytics-from')?.value || analyticsFilterState.from;
+  const to = document.getElementById('analytics-to')?.value || analyticsFilterState.to;
+  analyticsFilterState = { from: from || '', to: to || '' };
+  const params = new URLSearchParams();
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
+  return params.toString() ? `?${params}` : '';
+}
+
+function analyticsFilterHtml() {
+  return `<div class="filter-bar">
+    <label style="font-size:12px;color:var(--text-muted)">Từ ngày <input type="date" id="analytics-from" value="${analyticsFilterState.from}"></label>
+    <label style="font-size:12px;color:var(--text-muted)">Đến ngày <input type="date" id="analytics-to" value="${analyticsFilterState.to}"></label>
+    <button class="btn btn-primary" onclick="renderManagerDashboard()">🔍 Áp dụng</button>
+    <button class="btn btn-secondary" onclick="downloadAnalytics('customers')">⬇️ Khách hàng CSV</button>
+    <button class="btn btn-secondary" onclick="downloadAnalytics('feedbacks')">⬇️ Phản hồi CSV</button>
+    <button class="btn btn-secondary" onclick="downloadAnalytics('surveys')">⬇️ Khảo sát CSV</button>
+  </div>`;
+}
+
+function chartOptions() {
+  return { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#94a3b8' } } }, scales: { x: { grid: { color: 'rgba(203,213,225,0.05)' }, ticks: { color: '#94a3b8' } }, y: { grid: { color: 'rgba(203,213,225,0.05)' }, ticks: { color: '#94a3b8' } } } };
+}
+
+function completeMonthlySeries(entries) {
+  const counts = new Map(
+    (Array.isArray(entries) ? entries : [])
+      .map(entry => {
+        const match = String(entry?.month || '').match(/^(\d{4})-(\d{1,2})$/);
+        return match
+          ? [`${match[1]}-${match[2].padStart(2, '0')}`, Number(entry.count) || 0]
+          : null;
+      })
+      .filter(Boolean)
+  );
+  if (!counts.size) return [];
+
+  const keys = [...counts.keys()].sort();
+  const [firstYear, firstMonth] = keys[0].split('-').map(Number);
+  const [lastYear, lastMonth] = keys[keys.length - 1].split('-').map(Number);
+  let cursor = firstYear * 12 + firstMonth - 1;
+  const end = lastYear * 12 + lastMonth - 1;
+  if (keys.length === 1) cursor--;
+
+  const series = [];
+  while (cursor <= end) {
+    const year = Math.floor(cursor / 12);
+    const monthNumber = (cursor % 12) + 1;
+    const month = `${year}-${String(monthNumber).padStart(2, '0')}`;
+    series.push({ month, count: counts.get(month) || 0 });
+    cursor++;
+  }
+  return series;
+}
+
+async function downloadAnalytics(type) {
+  const query = analyticsQuery();
+  const button = document.querySelector(`button[onclick="downloadAnalytics('${type}')"]`);
+  if (button) button.disabled = true;
+  try {
+    const response = await fetch(`/api/manager/analytics/export?type=${type}${query ? `&${query.slice(1)}` : ''}`, {
+      headers: { Authorization: `Bearer ${state.token}` }
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || `HTTP ${response.status}`);
+    }
+    const blob = await response.blob();
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${type}-analytics.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(link.href);
+    toast('Xuất báo cáo thành công!', 'success');
+  } catch (e) {
+    toast(`Không thể xuất báo cáo: ${e.message}`, 'error');
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+async function renderManagerAnalytics() {
+  setPageHeader('📈 Phân tích CRM', 'Phân tích sâu khách hàng, phản hồi và hiệu quả khảo sát');
+  showLoading();
+  try {
+    const data = await api('GET', `/api/manager/analytics${analyticsQuery()}`);
+    const { customerProfiles, feedbackByProduct, surveyOverview } = data;
+    const byAge = {}, bySkin = {};
+    customerProfiles.forEach(c => {
+      const age = c.age < 25 ? 'Dưới 25' : c.age < 35 ? '25-34' : c.age < 45 ? '35-44' : '45+';
+      (c.beauty_preferences || '').split(',').map(p => p.trim()).filter(Boolean).forEach(pref => {
+        byAge[`${age}|${pref}`] = (byAge[`${age}|${pref}`] || 0) + 1;
+        if (c.skin_type) bySkin[`${c.skin_type}|${pref}`] = (bySkin[`${c.skin_type}|${pref}`] || 0) + 1;
+      });
+    });
+    const top = obj => Object.entries(obj).sort((a, b) => b[1] - a[1]).slice(0, 10);
+    setPageContent(`${analyticsFilterHtml()}
+      <div class="charts-grid">
+        <div class="chart-card"><div class="chart-title">🎯 Sở thích theo độ tuổi</div><div class="chart-container"><canvas id="chart-pref-age"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">🧴 Sở thích theo loại da</div><div class="chart-container"><canvas id="chart-pref-skin"></canvas></div></div>
+      </div>
+      <div class="card" style="margin-top:20px"><div class="card-title">⭐ Xếp hạng sản phẩm theo phản hồi</div>
+        <div class="table-wrapper"><table><thead><tr><th>Sản phẩm</th><th>Điểm TB</th><th>Số phản hồi</th></tr></thead><tbody>
+          ${feedbackByProduct.map(p => `<tr><td>${p.product_name}</td><td>⭐ ${p.average || '—'}</td><td>${p.count}</td></tr>`).join('') || '<tr><td colspan="3">Chưa có dữ liệu</td></tr>'}
+        </tbody></table></div>
+      </div>
+      <div class="card" style="margin-top:20px"><div class="card-title">📋 Hiệu quả chiến dịch khảo sát</div>
+      <div class="table-wrapper"><table><thead><tr><th>Khảo sát</th><th>Trạng thái</th><th>Người nhận</th><th>Phản hồi</th><th>Tỷ lệ</th><th></th></tr></thead><tbody>
+          ${surveyOverview.map(s => `<tr><td>${s.title}</td><td>${surveyStatusBadge(s.status)}</td><td>${s.recipients}</td><td>${s.responses}</td><td>${s.recipients ? Math.round((s.responses / s.recipients) * 100) : 0}%</td><td><button class="btn btn-secondary btn-sm" onclick="viewSurveyResults(${s.id},'${s.title.replace(/'/g,"\\'")}')">📊 Chi tiết</button></td></tr>`).join('') || '<tr><td colspan="6">Chưa có dữ liệu</td></tr>'}
+        </tbody></table></div>
+      </div>`);
+    const renderRanking = (id, entries) => new Chart(document.getElementById(id), { type: 'bar', data: { labels: entries.map(([key]) => key.split('|').join(' / ')), datasets: [{ data: entries.map(([, value]) => value), backgroundColor: '#a855f7', borderRadius: 8 }] }, options: { ...chartOptions(), plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#94a3b8', maxRotation: 45, minRotation: 30 } }, y: { ticks: { color: '#94a3b8' } } } } });
+    renderRanking('chart-pref-age', top(byAge));
+    renderRanking('chart-pref-skin', top(bySkin));
   } catch (e) { toast(e.message, 'error'); }
 }
 
@@ -151,10 +333,10 @@ async function fetchAndRenderCustomers(filters) {
         <table>
           <thead><tr>
             <th>Khách hàng</th><th>Liên hệ</th><th>Độ tuổi</th><th>Loại da</th>
-            <th>Sở thích</th><th>Hạng</th><th>Trạng thái</th><th>Ngày ĐK</th><th>Hành động</th>
+            <th>Sở thích</th><th>Trạng thái</th><th>Ngày ĐK</th><th>Hành động</th>
           </tr></thead>
           <tbody>
-            ${customers.length === 0 ? `<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text-muted)">Không tìm thấy khách hàng</td></tr>` : customers.map(c => `
+            ${customers.length === 0 ? `<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted)">Không tìm thấy khách hàng</td></tr>` : customers.map(c => `
               <tr>
                 <td>
                   <div style="display:flex;align-items:center;gap:10px">
@@ -173,7 +355,6 @@ async function fetchAndRenderCustomers(filters) {
                     ${c.beauty_preferences ? c.beauty_preferences.split(',').slice(0,2).map(p => `<span class="tag" style="font-size:10px">${p.trim()}</span>`).join('') : '—'}
                   </div>
                 </td>
-                <td>${membershipBadge(c.membership_tier)}</td>
                 <td>${statusBadge(c.status)}</td>
                 <td style="font-size:11px;color:var(--text-muted)">${formatDate(c.created_at)}</td>
                 <td>

@@ -8,6 +8,12 @@ const db = require('./database/db');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'cosmetics_crm_secret_2026';
+const BEAUTY_PREFERENCES = new Set(['Trang điểm', 'Chăm sóc da', 'Chống lão hóa', 'Trị mụn', 'Dưỡng ẩm', 'Organic', 'Skincare cơ bản']);
+const BEAUTY_PREFERENCE_ALIASES = { 'Dưỡng da': 'Dưỡng ẩm' };
+
+function normalizeBeautyPreferences(value) {
+  return [...new Set(String(value || '').split(',').map(item => BEAUTY_PREFERENCE_ALIASES[item.trim()] || item.trim()).filter(item => BEAUTY_PREFERENCES.has(item)))].join(',');
+}
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -148,7 +154,7 @@ app.post('/api/auth/register', async (req, res) => {
     const existing = await db.prepare('SELECT id FROM Accounts WHERE username = ?').get(username);
     if (existing) return res.status(409).json({ error: 'Tên đăng nhập đã tồn tại' });
     const accountResult = await insertAccount(username, password, full_name, email, phone, 'CUSTOMER');
-    await db.prepare('INSERT INTO Customers (account_id, age, gender, skin_type, beauty_preferences) VALUES (?, ?, ?, ?, ?)').run(accountResult.lastInsertRowid, age || null, gender || null, skin_type || null, beauty_preferences || null);
+    await db.prepare('INSERT INTO Customers (account_id, age, gender, skin_type, beauty_preferences) VALUES (?, ?, ?, ?, ?)').run(accountResult.lastInsertRowid, age || null, gender || null, skin_type || null, normalizeBeautyPreferences(beauty_preferences) || null);
     res.status(201).json({ message: 'Đăng ký thành công! Vui lòng đăng nhập.' });
   } catch (err) {
     console.error('Register error:', err);
@@ -384,6 +390,37 @@ app.get('/api/admin/database/backups', authMiddleware, requireRole('ADMIN'), asy
 // ========== MANAGER: Dashboard Analytics ==========
 app.get('/api/manager/analytics', authMiddleware, requireRole('MANAGER'), async (req, res) => {
   try {
+    const { from, to } = req.query;
+    const customerDateParams = [];
+    const accountDateParams = [];
+    const feedbackDateParams = [];
+    const surveyDateParams = [];
+    let customerDateWhere = '';
+    let accountDateWhere = '';
+    let feedbackDateWhere = '';
+    let surveyDateWhere = '';
+    if (from) {
+      customerDateWhere += ' AND c.created_at >= ?';
+      accountDateWhere += ' AND a.created_at >= ?';
+      feedbackDateWhere += ' AND f.created_at >= ?';
+      surveyDateWhere += ' AND s.created_at >= ?';
+      customerDateParams.push(from);
+      accountDateParams.push(from);
+      feedbackDateParams.push(from);
+      surveyDateParams.push(from);
+    }
+    if (to) {
+      const toExclusive = `${to}T23:59:59.997`;
+      customerDateWhere += ' AND c.created_at <= ?';
+      accountDateWhere += ' AND a.created_at <= ?';
+      feedbackDateWhere += ' AND f.created_at <= ?';
+      surveyDateWhere += ' AND s.created_at <= ?';
+      customerDateParams.push(toExclusive);
+      accountDateParams.push(toExclusive);
+      feedbackDateParams.push(toExclusive);
+      surveyDateParams.push(toExclusive);
+    }
+
     const ageGroups = await db.prepare(`
       SELECT
         CASE
@@ -394,8 +431,8 @@ app.get('/api/manager/analytics', authMiddleware, requireRole('MANAGER'), async 
           ELSE N'45+'
         END AS age_group,
         COUNT(*) as count
-      FROM Customers
-      WHERE age IS NOT NULL
+      FROM Customers c
+      WHERE c.age IS NOT NULL${customerDateWhere}
       GROUP BY
         CASE
           WHEN age < 18 THEN N'Dưới 18'
@@ -404,42 +441,112 @@ app.get('/api/manager/analytics', authMiddleware, requireRole('MANAGER'), async 
           WHEN age BETWEEN 35 AND 44 THEN N'35-44'
           ELSE N'45+'
         END
-    `).all();
+    `).all(...customerDateParams);
 
-    const skinTypes = await db.prepare(`SELECT skin_type, COUNT(*) as count FROM Customers WHERE skin_type IS NOT NULL GROUP BY skin_type ORDER BY count DESC`).all();
+    const skinTypes = await db.prepare(`SELECT c.skin_type, COUNT(*) as count FROM Customers c WHERE c.skin_type IS NOT NULL${customerDateWhere} GROUP BY c.skin_type ORDER BY count DESC`).all(...customerDateParams);
+    const genderGroups = await db.prepare(`SELECT c.gender, COUNT(*) as count FROM Customers c WHERE c.gender IS NOT NULL${customerDateWhere} GROUP BY c.gender ORDER BY count DESC`).all(...customerDateParams);
+    const customerProfiles = (await db.prepare(`SELECT c.age, c.skin_type, c.beauty_preferences FROM Customers c WHERE c.beauty_preferences IS NOT NULL${customerDateWhere}`).all(...customerDateParams))
+      .map(profile => ({ ...profile, beauty_preferences: normalizeBeautyPreferences(profile.beauty_preferences) }));
+    const newCustomersByMonth = await db.prepare(`
+      SELECT CONCAT(YEAR(a.created_at), '-', RIGHT(CONCAT('0', MONTH(a.created_at)), 2)) AS month, COUNT(*) AS count
+      FROM Customers c
+      INNER JOIN Accounts a ON a.id = c.account_id
+      WHERE a.role = 'CUSTOMER'${accountDateWhere}
+      GROUP BY YEAR(a.created_at), MONTH(a.created_at)
+      ORDER BY YEAR(a.created_at), MONTH(a.created_at)
+    `).all(...accountDateParams);
 
     // Process beauty preferences
-    const allPrefs = await db.prepare('SELECT beauty_preferences FROM Customers WHERE beauty_preferences IS NOT NULL').all();
+    const allPrefs = customerProfiles;
     const prefCount = {};
     allPrefs.forEach(row => {
       if (row.beauty_preferences) {
         row.beauty_preferences.split(',').forEach(p => {
-          const key = p.trim();
+          const key = BEAUTY_PREFERENCE_ALIASES[p.trim()] || p.trim();
+          if (!BEAUTY_PREFERENCES.has(key)) return;
           if (key) prefCount[key] = (prefCount[key] || 0) + 1;
         });
       }
     });
     const beautyPrefs = Object.entries(prefCount).map(([pref, count]) => ({ pref, count })).sort((a, b) => b.count - a.count);
 
-    const totalCustRow = await db.prepare('SELECT COUNT(*) as cnt FROM Customers').get();
-    const activeCustRow = await db.prepare("SELECT COUNT(*) as cnt FROM Accounts WHERE role='CUSTOMER' AND status='ACTIVE'").get();
-    const lockedCustRow = await db.prepare("SELECT COUNT(*) as cnt FROM Accounts WHERE role='CUSTOMER' AND status='LOCKED'").get();
-    const avgRatingRow = await db.prepare('SELECT ROUND(AVG(CAST(rating AS FLOAT)), 1) as avg FROM Feedbacks').get();
-    const totalFeedbacksRow = await db.prepare('SELECT COUNT(*) as cnt FROM Feedbacks').get();
-    const activeSurveysRow = await db.prepare("SELECT COUNT(*) as cnt FROM Surveys WHERE status='ACTIVE'").get();
-    const totalSurveyRespRow = await db.prepare('SELECT COUNT(*) as cnt FROM SurveyResults').get();
-
+    const totalCustRow = await db.prepare(`SELECT COUNT(*) as cnt FROM Customers c WHERE 1=1${customerDateWhere}`).get(...customerDateParams);
+    const lockedCustRow = await db.prepare(`SELECT COUNT(*) as cnt FROM Accounts a JOIN Customers c ON c.account_id = a.id WHERE a.role='CUSTOMER' AND a.status='LOCKED'${customerDateWhere}`).get(...customerDateParams);
+    const avgRatingRow = await db.prepare(`SELECT ROUND(AVG(CAST(f.rating AS FLOAT)), 1) as avg FROM Feedbacks f WHERE 1=1${feedbackDateWhere}`).get(...feedbackDateParams);
+    const totalFeedbacksRow = await db.prepare(`SELECT COUNT(*) as cnt FROM Feedbacks f WHERE 1=1${feedbackDateWhere}`).get(...feedbackDateParams);
+    const repliedFeedbacksRow = await db.prepare(`SELECT COUNT(*) as cnt FROM Feedbacks f WHERE f.status='REPLIED'${feedbackDateWhere}`).get(...feedbackDateParams);
+    const activeSurveysRow = await db.prepare(`SELECT COUNT(*) as cnt FROM Surveys s WHERE s.status='ACTIVE'${surveyDateWhere}`).get(...surveyDateParams);
+    const totalSurveyRespRow = await db.prepare(`SELECT COUNT(*) as cnt FROM SurveyResults sr JOIN Surveys s ON s.id = sr.survey_id WHERE 1=1${surveyDateWhere.replaceAll('s.created_at', 'sr.submitted_at')}`).get(...surveyDateParams);
+    const surveyRecipientRow = await db.prepare(`SELECT COUNT(*) as cnt FROM SurveyRecipients r JOIN Surveys s ON s.id = r.survey_id WHERE 1=1${surveyDateWhere.replaceAll('s.created_at', 'r.sent_at')}`).get(...surveyDateParams);
+    const feedbackByProduct = await db.prepare(`
+      SELECT p.name AS product_name, COUNT(*) AS count, ROUND(AVG(CAST(f.rating AS FLOAT)), 1) AS average
+      FROM Feedbacks f JOIN Products p ON p.id = f.product_id
+      WHERE 1=1${feedbackDateWhere}
+      GROUP BY p.name ORDER BY average DESC, count DESC
+    `).all(...feedbackDateParams);
+    const surveyOverview = await db.prepare(`
+      SELECT s.id, s.title, s.status,
+        (SELECT COUNT(*) FROM SurveyRecipients r WHERE r.survey_id = s.id) AS recipients,
+        (SELECT COUNT(*) FROM SurveyResults sr WHERE sr.survey_id = s.id) AS responses
+      FROM Surveys s WHERE 1=1${surveyDateWhere}
+      ORDER BY s.created_at DESC
+    `).all(...surveyDateParams);
     const totalCustomers = totalCustRow?.cnt || 0;
-    const activeCustomers = activeCustRow?.cnt || 0;
     const lockedCustomers = lockedCustRow?.cnt || 0;
     const avgRating = avgRatingRow?.avg || 0;
     const totalFeedbacks = totalFeedbacksRow?.cnt || 0;
+    const repliedFeedbacks = repliedFeedbacksRow?.cnt || 0;
     const activeSurveys = activeSurveysRow?.cnt || 0;
     const totalSurveyResponses = totalSurveyRespRow?.cnt || 0;
+    const surveyRecipients = surveyRecipientRow?.cnt || 0;
 
-    res.json({ ageGroups, skinTypes, beautyPrefs, stats: { totalCustomers, activeCustomers, lockedCustomers, avgRating, totalFeedbacks, activeSurveys, totalSurveyResponses } });
+    res.json({
+      ageGroups, skinTypes, genderGroups, beautyPrefs, customerProfiles, newCustomersByMonth,
+      feedbackByProduct, surveyOverview,
+      stats: {
+        totalCustomers, lockedCustomers, avgRating, totalFeedbacks, repliedFeedbacks,
+        feedbackReplyRate: totalFeedbacks ? Math.round((repliedFeedbacks / totalFeedbacks) * 100) : 0,
+        activeSurveys, totalSurveyResponses, surveyRecipients,
+        surveyResponseRate: surveyRecipients ? Math.round((totalSurveyResponses / surveyRecipients) * 100) : 0
+      }
+    });
   } catch (err) {
     console.error('Analytics error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/manager/analytics/export', authMiddleware, requireRole('MANAGER'), async (req, res) => {
+  try {
+    const { type, from, to } = req.query;
+    const params = [];
+    let where = '';
+    let headers;
+    let rows;
+    if (type === 'customers') {
+      if (from) { where += ' AND c.created_at >= ?'; params.push(from); }
+      if (to) { where += ' AND c.created_at <= ?'; params.push(`${to}T23:59:59.997`); }
+      headers = ['Họ tên', 'Username', 'Email', 'Trạng thái', 'Tuổi', 'Giới tính', 'Loại da', 'Ngày đăng ký'];
+      rows = await db.prepare(`SELECT a.full_name, a.username, a.email, a.status, c.age, c.gender, c.skin_type, c.created_at FROM Accounts a JOIN Customers c ON c.account_id = a.id WHERE a.role='CUSTOMER'${where} ORDER BY c.created_at DESC`).all(...params);
+    } else if (type === 'feedbacks') {
+      if (from) { where += ' AND f.created_at >= ?'; params.push(from); }
+      if (to) { where += ' AND f.created_at <= ?'; params.push(`${to}T23:59:59.997`); }
+      headers = ['Khách hàng', 'Sản phẩm', 'Số sao', 'Trạng thái', 'Nội dung', 'Ngày gửi'];
+      rows = await db.prepare(`SELECT a.full_name AS customer_name, p.name AS product_name, f.rating, f.status, f.content, f.created_at FROM Feedbacks f JOIN Customers c ON c.id=f.customer_id JOIN Accounts a ON a.id=c.account_id JOIN Products p ON p.id=f.product_id WHERE 1=1${where} ORDER BY f.created_at DESC`).all(...params);
+    } else if (type === 'surveys') {
+      if (from) { where += ' AND s.created_at >= ?'; params.push(from); }
+      if (to) { where += ' AND s.created_at <= ?'; params.push(`${to}T23:59:59.997`); }
+      headers = ['Tiêu đề', 'Trạng thái', 'Số người nhận', 'Số phản hồi', 'Ngày tạo'];
+      rows = await db.prepare(`SELECT s.title, s.status, (SELECT COUNT(*) FROM SurveyRecipients r WHERE r.survey_id=s.id) AS recipients, (SELECT COUNT(*) FROM SurveyResults sr WHERE sr.survey_id=s.id) AS responses, s.created_at FROM Surveys s WHERE 1=1${where} ORDER BY s.created_at DESC`).all(...params);
+    } else {
+      return res.status(400).json({ error: 'Loại báo cáo không hợp lệ' });
+    }
+    const escapeCsv = value => `"${String(value ?? '').replaceAll('"', '""')}"`;
+    const csv = [headers, ...rows.map(row => headers.map((_, index) => escapeCsv(Object.values(row)[index])))].map(line => line.join(',')).join('\r\n');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${type}-analytics.csv"`);
+    res.send('\uFEFF' + csv);
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
@@ -449,7 +556,7 @@ app.get('/api/manager/customers', authMiddleware, requireRole('MANAGER'), async 
   try {
     const { search, skin_type, status } = req.query;
     let sql = `SELECT a.id, a.username, a.full_name, a.email, a.phone, a.status, a.created_at,
-      c.id as customer_id, c.age, c.gender, c.skin_type, c.beauty_preferences, c.membership_tier
+      c.id as customer_id, c.age, c.gender, c.skin_type, c.beauty_preferences
       FROM Accounts a LEFT JOIN Customers c ON a.id = c.account_id
       WHERE a.role = 'CUSTOMER'`;
     const params = [];
@@ -471,7 +578,7 @@ app.post('/api/manager/customers', authMiddleware, requireRole('MANAGER'), async
     const existing = await db.prepare('SELECT id FROM Accounts WHERE username = ?').get(username);
     if (existing) return res.status(409).json({ error: 'Tên đăng nhập đã tồn tại' });
     const accResult = await insertAccount(username, password, full_name, email, phone, 'CUSTOMER');
-    await db.prepare('INSERT INTO Customers (account_id, age, gender, skin_type, beauty_preferences) VALUES (?, ?, ?, ?, ?)').run(accResult.lastInsertRowid, age || null, gender || null, skin_type || null, beauty_preferences || null);
+    await db.prepare('INSERT INTO Customers (account_id, age, gender, skin_type, beauty_preferences) VALUES (?, ?, ?, ?, ?)').run(accResult.lastInsertRowid, age || null, gender || null, skin_type || null, normalizeBeautyPreferences(beauty_preferences) || null);
     res.status(201).json({ message: 'Thêm khách hàng thành công' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -679,7 +786,7 @@ app.put('/api/customer/profile', authMiddleware, requireRole('CUSTOMER'), async 
   try {
     const { full_name, email, phone, age, gender, skin_type, beauty_preferences } = req.body;
     await db.prepare('UPDATE Accounts SET full_name = ?, email = ?, phone = ? WHERE id = ?').run(full_name, email, phone, req.user.id);
-    await db.prepare('UPDATE Customers SET age = ?, gender = ?, skin_type = ?, beauty_preferences = ? WHERE account_id = ?').run(age || null, gender || null, skin_type || null, beauty_preferences || null, req.user.id);
+    await db.prepare('UPDATE Customers SET age = ?, gender = ?, skin_type = ?, beauty_preferences = ? WHERE account_id = ?').run(age || null, gender || null, skin_type || null, normalizeBeautyPreferences(beauty_preferences) || null, req.user.id);
     res.json({ message: 'Cập nhật thông tin thành công' });
   } catch (err) {
     res.status(500).json({ error: err.message });
